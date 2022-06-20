@@ -692,7 +692,7 @@
         <collision name='collision'>
           <geometry>
             <box>
-              <size>0.006963 0.012765 0.007255</size>
+              <size>0 0 0</size>
             </box>
           </geometry>
           <max_contacts>10</max_contacts>
@@ -712,7 +712,7 @@
         <visual name='visual'>
           <geometry>
             <box>
-              <size>0.006963 0.012765 0.007255</size>
+              <size>0 0 0</size>
             </box>
           </geometry>
           <material>
@@ -728,10 +728,40 @@
       </link>
     </model>
     <state world_name='default'>
-      <sim_time>2994 463000000</sim_time>
-      <real_time>173 626806948</real_time>
-      <wall_time>1655757742 226978087</wall_time>
-      <iterations>172719</iterations>
+      <sim_time>3529 765000000</sim_time>
+      <real_time>258 286298987</real_time>
+      <wall_time>1655764161 60530879</wall_time>
+      <iterations>256683</iterations>
+      <model name='Duck'>
+        <pose>0.499886 1.25001 0.810008 0.00099 0.000238 0.001846</pose>
+        <scale>1 1 1</scale>
+        <link name='body'>
+          <pose>0.499886 1.25001 0.810008 0.00099 0.000238 0.001846</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 -9.8 0 -0 0</acceleration>
+          <wrench>0 0 -9.8 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='Duck_clone'>
+        <pose>-2.25 1.1e-05 0.810008 0.000986 0.000232 -3e-05</pose>
+        <scale>1 1 1</scale>
+        <link name='body'>
+          <pose>-2.25 1.1e-05 0.810008 0.000986 0.000232 -3e-05</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 -9.8 0 -0 0</acceleration>
+          <wrench>0 0 -9.8 0 -0 0</wrench>
+        </link>
+      </model>
+      <model name='Duck_clone_clone'>
+        <pose>0.499998 -1.24999 0.810017 0.00099 0.000232 -0.000239</pose>
+        <scale>1 1 1</scale>
+        <link name='body'>
+          <pose>0.499998 -1.24999 0.810017 0.00099 0.000232 -0.000239</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0.000329 -0.002286 18.7828 -0.463051 -0.070743 -1e-06</acceleration>
+          <wrench>0.000329 -0.002286 18.7828 0 -0 0</wrench>
+        </link>
+      </model>
       <model name='ground_plane'>
         <pose>0 0 0 0 -0 0</pose>
         <scale>1 1 1</scale>
@@ -772,42 +802,22 @@
           <wrench>0 0 0 0 -0 0</wrench>
         </link>
       </model>
+      <model name='unit_box'>
+        <pose>-0.210615 -1.25 1.00696 0 -0 7.2e-05</pose>
+        <scale>0.316704 0.220999 0.383914</scale>
+        <link name='link'>
+          <pose>-0.210615 -1.25 1.00696 0 -0 7.2e-05</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>-5e-05 7.4e-05 7e-06 -0.000318 -0.000212 0.000479</acceleration>
+          <wrench>-5e-05 7.4e-05 7e-06 0 -0 0</wrench>
+        </link>
+      </model>
       <model name='unit_box_clone_clone_clone'>
-        <pose>-0.210615 -1.25 1.01388 0 0 -7.1e-05</pose>
+        <pose>-0.210601 -1.25002 -322842 0 0 -7.7e-05</pose>
         <scale>45.5277 17.4122 54.8261</scale>
         <link name='link'>
-          <pose>-0.210615 -1.25 1.01388 0 0 -7.1e-05</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>5.5e-05 -8e-05 -7e-06 0.000331 0.000224 -0.00052</acceleration>
-          <wrench>5.5e-05 -8e-05 -7e-06 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='unit_cylinder_clone'>
-        <pose>-2.25 5e-06 0.842491 -0.00017 7.5e-05 -3.2e-05</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose>-2.25 5e-06 0.842491 -0.00017 7.5e-05 -3.2e-05</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 -9.8 0 -0 0</acceleration>
-          <wrench>0 0 -9.8 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='unit_cylinder_clone_clone'>
-        <pose>0.5 -1.25 0.842485 -0.000119 5.5e-05 -0.000161</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose>0.5 -1.25 0.842485 -0.000119 5.5e-05 -0.000161</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
-          <acceleration>0 0 -9.8 0 -0 0</acceleration>
-          <wrench>0 0 -9.8 0 -0 0</wrench>
-        </link>
-      </model>
-      <model name='unit_cylinder_clone_clone_0'>
-        <pose>0.499886 1.25001 0.842484 -0.000106 7.3e-05 0.001862</pose>
-        <scale>1 1 1</scale>
-        <link name='link'>
-          <pose>0.499886 1.25001 0.842484 -0.000106 7.3e-05 0.001862</pose>
-          <velocity>0 0 0 0 -0 0</velocity>
+          <pose>-0.210601 -1.25002 -322842 0 0 -7.7e-05</pose>
+          <velocity>0 -0 -2515.49 0 -0 0</velocity>
           <acceleration>0 0 -9.8 0 -0 0</acceleration>
           <wrench>0 0 -9.8 0 -0 0</wrench>
         </link>
@@ -818,32 +828,181 @@
     </state>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose>0.656973 -1.12784 1.28095 -0 -0.034198 -3.06297</pose>
+        <pose>3.13473 0.24096 1.39365 0 0.217802 -3.04697</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
     </gui>
-    <model name='unit_cylinder_clone'>
-      <pose>-2.30846 0.078305 0.842489 -0.000108 6.3e-05 0.001779</pose>
+    <model name='Duck'>
+      <pose>0 1.25 0 0 -0 0</pose>
+      <static>0</static>
+      <link name='body'>
+        <inertial>
+          <mass>1</mass>
+          <pose>0 0 0 0 -0 0</pose>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
+          <gravity>1</gravity>
+        </inertial>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>file:///home/shashankshiva/catkin_ws/src/stretch_skill_repair/worlds/duck/duck2.dae</uri>
+            </mesh>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='visual'>
+          <pose>0 0 0 0 -0 0</pose>
+          <geometry>
+            <mesh>
+              <uri>file:///home/shashankshiva/catkin_ws/src/stretch_skill_repair/worlds/duck/duck2.dae</uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+    </model>
+    <model name='Duck_clone'>
+      <pose>0.1995 1.46298 0.810042 0.002752 -0.001562 0.001858</pose>
+      <static>0</static>
+      <link name='body'>
+        <inertial>
+          <mass>1</mass>
+          <pose>0 0 0 0 -0 0</pose>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
+          <gravity>1</gravity>
+        </inertial>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>file:///home/shashankshiva/catkin_ws/src/stretch_skill_repair/worlds/duck/duck2.dae</uri>
+            </mesh>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='visual'>
+          <pose>0 0 0 0 -0 0</pose>
+          <geometry>
+            <mesh>
+              <uri>file:///home/shashankshiva/catkin_ws/src/stretch_skill_repair/worlds/duck/duck2.dae</uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+    </model>
+    <model name='Duck_clone_clone'>
+      <pose>-4.32738 -3.67176 0.810036 0.002153 5.4e-05 -1.9e-05</pose>
+      <static>0</static>
+      <link name='body'>
+        <inertial>
+          <mass>1</mass>
+          <pose>0 0 0 0 -0 0</pose>
+          <inertia>
+            <ixx>1</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1</iyy>
+            <iyz>0</iyz>
+            <izz>1</izz>
+          </inertia>
+          <gravity>1</gravity>
+        </inertial>
+        <collision name='collision'>
+          <geometry>
+            <mesh>
+              <uri>file:///home/shashankshiva/catkin_ws/src/stretch_skill_repair/worlds/duck/duck2.dae</uri>
+            </mesh>
+          </geometry>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='visual'>
+          <pose>0 0 0 0 -0 0</pose>
+          <geometry>
+            <mesh>
+              <uri>file:///home/shashankshiva/catkin_ws/src/stretch_skill_repair/worlds/duck/duck2.dae</uri>
+            </mesh>
+          </geometry>
+        </visual>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+    </model>
+    <model name='unit_box'>
+      <pose>1.56489 -0.511819 0.5 0 -0 0</pose>
       <link name='link'>
         <inertial>
           <mass>1</mass>
           <inertia>
-            <ixx>0.145833</ixx>
+            <ixx>0.166667</ixx>
             <ixy>0</ixy>
             <ixz>0</ixz>
-            <iyy>0.145833</iyy>
+            <iyy>0.166667</iyy>
             <iyz>0</iyz>
-            <izz>0.125</izz>
+            <izz>0.166667</izz>
           </inertia>
           <pose>0 0 0 0 -0 0</pose>
         </inertial>
         <collision name='collision'>
           <geometry>
-            <cylinder>
-              <radius>0.0382692</radius>
-              <length>0.0549689</length>
-            </cylinder>
+            <box>
+              <size>1 1 1</size>
+            </box>
           </geometry>
           <max_contacts>10</max_contacts>
           <surface>
@@ -861,10 +1020,9 @@
         </collision>
         <visual name='visual'>
           <geometry>
-            <cylinder>
-              <radius>0.0382692</radius>
-              <length>0.0549689</length>
-            </cylinder>
+            <box>
+              <size>1 1 1</size>
+            </box>
           </geometry>
           <material>
             <script>
@@ -877,136 +1035,6 @@
         <enable_wind>0</enable_wind>
         <kinematic>0</kinematic>
       </link>
-    </model>
-    <model name='unit_cylinder_clone_clone'>
-      <pose>0.287134 -1.36625 0.842485 -0.000119 5.5e-05 -5.9e-05</pose>
-      <link name='link'>
-        <inertial>
-          <mass>1</mass>
-          <inertia>
-            <ixx>0.145833</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>0.145833</iyy>
-            <iyz>0</iyz>
-            <izz>0.125</izz>
-          </inertia>
-          <pose>0 0 0 0 -0 0</pose>
-        </inertial>
-        <collision name='collision'>
-          <geometry>
-            <cylinder>
-              <radius>0.0382692</radius>
-              <length>0.0549689</length>
-            </cylinder>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <cylinder>
-              <radius>0.0382692</radius>
-              <length>0.0549689</length>
-            </cylinder>
-          </geometry>
-          <material>
-            <script>
-              <name>Gazebo/Grey</name>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-            </script>
-          </material>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-    </model>
-    <model name='unit_cylinder_clone_clone_0'>
-      <pose>0.49274 1.29281 0.842492 -0.000169 7.4e-05 -8.7e-05</pose>
-      <link name='link'>
-        <inertial>
-          <mass>1</mass>
-          <inertia>
-            <ixx>0.145833</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>0.145833</iyy>
-            <iyz>0</iyz>
-            <izz>0.125</izz>
-          </inertia>
-          <pose>0 0 0 0 -0 0</pose>
-        </inertial>
-        <collision name='collision'>
-          <geometry>
-            <cylinder>
-              <radius>0.0382692</radius>
-              <length>0.0549689</length>
-            </cylinder>
-          </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
-        </collision>
-        <visual name='visual'>
-          <geometry>
-            <cylinder>
-              <radius>0.0382692</radius>
-              <length>0.0549689</length>
-            </cylinder>
-          </geometry>
-          <material>
-            <script>
-              <name>Gazebo/Grey</name>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-            </script>
-          </material>
-        </visual>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
-      </link>
-    </model>
-    <model name="Duck">
-    	<pose>0 1.25 0 0 0 0</pose>   	<static>false</static>
-    		<link name="body">
-          <inertial>
-            <mass>1.0</mass>
-            <gravity>1</gravity>
-          </inertial>
-          <collision name="collision">
-          <geometry>
-              <mesh><uri>file:///home/shashankshiva/catkin_ws/src/stretch_skill_repair/worlds/duck/duck2.dae</uri></mesh>
-          </geometry>
-          </collision>
-	         <visual name="visual">
-            			<pose>0 0 0 0 0 0</pose>
-            				<geometry>
-                				<mesh><uri>file:///home/shashankshiva/catkin_ws/src/stretch_skill_repair/worlds/duck/duck2.dae</uri></mesh>
-            				</geometry>
-        		</visual>
-    		</link>
     </model>
   </world>
 </sdf>
