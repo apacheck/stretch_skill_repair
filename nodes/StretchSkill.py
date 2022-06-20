@@ -81,7 +81,7 @@ class StretchSkill(hm.HelloNode):
             if not IS_SIM:
                 with self.move_lock:
                     pose = {
-                    'gripper_aperture': 0.03
+                    'gripper_aperture': 0.05
                     }
                     self.move_to_pose(pose)
             else:
@@ -141,7 +141,7 @@ class StretchSkill(hm.HelloNode):
             # rospy.sleep(10.0)
             move_group_arm = moveit_commander.MoveGroupCommander("stretch_arm")
 
-        close_enough = 0.01
+        close_enough = 0.001
         epsilon = 0.1
         maxV = 2
         wheel2center = 0.1778
@@ -234,7 +234,7 @@ class StretchSkill(hm.HelloNode):
                     cmd_w -= 2 * np.pi
                 if cmd_w < -np.pi:
                     cmd_w += 2 * np.pi
-                if np.abs(cmd_w) < 0.005:
+                if np.abs(cmd_w) < 0.0005:
                     make_theta_correction = False
                 else:
                     # rospy.loginfo("cmd_v: {} cmd_w: {}".format(0, cmd_w))
@@ -305,7 +305,7 @@ if __name__ == '__main__':
         stretch_box_pose = np.array([[unit_box_pose.translation.x, unit_box_pose.translation.y - 0.75, np.pi, -10, -10, -10]])
         node.open_gripper()
         rospy.loginfo("Moving to box")
-        node.follow_trajectory(stretch_box_pose)
+        # node.follow_trajectory(stretch_box_pose)
         rospy.loginfo("Picking up box")
         node.follow_trajectory(data7)
         # node.follow_trajectory(data5)
