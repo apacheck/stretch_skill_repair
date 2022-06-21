@@ -39,7 +39,7 @@ from moveit_commander.conversions import pose_to_list
 
 IS_SIM = True
 ORIGIN_FRAME = 'odom'
-STRETCH_FRAME = 'base_link'
+STRETCH_FRAME = 'robot::base_link'
 CMD_VEL_TOPIC = '/stretch_diff_drive_controller/cmd_vel'
 DO_THETA_CORRECTION = True
 DO_MOVE_ARM = True
@@ -52,6 +52,7 @@ DO_MOVE_GRIPPER = True
 
 class StretchSkill(hm.HelloNode):
     def __init__(self):
+        rospy.loginfo("Creating stretch skill")
         if IS_SIM:
             moveit_commander.roscpp_initialize(sys.argv)
             rospy.init_node('controller', anonymous=True)
@@ -121,6 +122,7 @@ class StretchSkill(hm.HelloNode):
 
     def findPose(self, frame):
         found_transform = False
+        cnt = 1
         while not found_transform:
             try:
                 trans_stamped = self.tfBuffer.lookup_transform(ORIGIN_FRAME, frame, rospy.Time.now(), rospy.Duration(1.0))
@@ -128,6 +130,9 @@ class StretchSkill(hm.HelloNode):
                 found_transform = True
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 self.rate.sleep()
+                cnt += 1
+                if cnt % 10 == 0:
+                    rospy.loginfo("Can't find transform")
                 continue
 
         return trans
@@ -141,7 +146,7 @@ class StretchSkill(hm.HelloNode):
             # rospy.sleep(10.0)
             move_group_arm = moveit_commander.MoveGroupCommander("stretch_arm")
 
-        close_enough = 0.001
+        close_enough = 0.01
         epsilon = 0.1
         maxV = 2
         wheel2center = 0.1778
@@ -223,10 +228,10 @@ class StretchSkill(hm.HelloNode):
                 _, _, theta = findDeltaPose(trans_stretch, d)
                 # theta += np.pi
                 # print("Real theta: {}".format(theta))
-                if theta < np.pi:
-                    theta += 2 * np.pi
-                if theta > np.pi:
-                    theta -= 2 * np.pi
+                # if theta < np.pi:
+                #     theta += 2 * np.pi
+                # if theta > np.pi:
+                #     theta -= 2 * np.pi
                 # rospy.loginfo("Robot is at: x: {:.3f}, y: {:.3f}, z: {:.3f}, theta: {:.3f}".format(trans_stretch.translation.x, trans_stretch.translation.y, trans_stretch.translation.z, theta))
 
                 cmd_w = d[2] - theta
@@ -234,7 +239,7 @@ class StretchSkill(hm.HelloNode):
                     cmd_w -= 2 * np.pi
                 if cmd_w < -np.pi:
                     cmd_w += 2 * np.pi
-                if np.abs(cmd_w) < 0.0005:
+                if np.abs(cmd_w) < 0.001:
                     make_theta_correction = False
                 else:
                     # rospy.loginfo("cmd_v: {} cmd_w: {}".format(0, cmd_w))
@@ -244,14 +249,18 @@ class StretchSkill(hm.HelloNode):
                     self.rate.sleep()
 
             rospy.loginfo("Verifying new pose")
+            trans_stretch = self.findPose(STRETCH_FRAME)
+            _, _, theta = findDeltaPose(trans_stretch, d)
             found_transform = False
             trans_stretch = self.findPose(STRETCH_FRAME)
 
             rospy.loginfo("Robot is at: x: {:.3f}, y: {:.3f}, z: {:.3f}, theta: {:.3f}".format(trans_stretch.translation.x, trans_stretch.translation.y, trans_stretch.translation.z, theta))
 
-            trans_ee = self.findPose('link_grasp_center')
+            trans_ee_l = self.findPose('robot::link_gripper_finger_left')
+            trans_ee_r = self.findPose('robot::link_gripper_finger_right')
 
-            rospy.loginfo("Gripper is at: x: {:.3f}, y: {:.3f}, z: {:.3f}".format(trans_ee.translation.x, trans_ee.translation.y, trans_ee.translation.z))
+            rospy.loginfo("Gripper left is at: x: {:.3f}, y: {:.3f}, z: {:.3f}".format(trans_ee_l.translation.x, trans_ee_l.translation.y, trans_ee_l.translation.z))
+            rospy.loginfo("Gripper right is at: x: {:.3f}, y: {:.3f}, z: {:.3f}".format(trans_ee_r.translation.x, trans_ee_r.translation.y, trans_ee_r.translation.z))
 
         rospy.loginfo("Completed follow_trajectory")
         if IS_SIM and DO_MOVE_ARM:
@@ -292,24 +301,52 @@ def findDeltaPose(arg_cur_pose, arg_desired_pose):
 
 
 if __name__ == '__main__':
+    # Extension, lift, yaw
     try:
         parser = ap.ArgumentParser(description='Handover an object.')
         args, unknown = parser.parse_known_args()
         node = StretchSkill()
-        data4 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch4/train/rollout-0.txt')
-        data5 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch5/train/rollout-0.txt')
-        data6 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch6/train/rollout-0.txt')
-        data7 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch7/train/rollout-0.txt')
+        # data4 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch4/train/rollout-0.txt')
+        # data5 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch5/train/rollout-0.txt')
+        # data6 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch6/train/rollout-0.txt')
+        # data7 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch7/train/rollout-0.txt')
 
-        unit_box_pose = node.findPose('unit_box')
-        stretch_box_pose = np.array([[unit_box_pose.translation.x, unit_box_pose.translation.y - 0.75, np.pi, -10, -10, -10]])
+        unit_box_pose = node.findPose('unit_box::link')
+        stretch_base_box_pickup = np.array([[unit_box_pose.translation.x-.04, unit_box_pose.translation.y - 0.75, np.pi, -10, -10, -10]])
         node.open_gripper()
         rospy.loginfo("Moving to box")
-        # node.follow_trajectory(stretch_box_pose)
-        rospy.loginfo("Picking up box")
-        node.follow_trajectory(data7)
+        # node.follow_trajectory(stretch_base_box_pickup)
+
+        # print("Going to zero")
+        # zeros_stretch = np.array([[-10, -10, -10, 0, .2, 0]])
+        # node.follow_trajectory(zeros_stretch)
+        # ee_left = node.findPose('robot::link_gripper_finger_left')
+        # print(ee_left)
+
+        rospy.loginfo("Lifting arm")
+        ee_left = node.findPose('robot::link_gripper_finger_left')
+        ee_right = node.findPose('robot::link_gripper_finger_right')
+        link_lift = node.findPose('robot::link_lift')
+        amount_to_lift = (unit_box_pose.translation.z)-.03
+        rospy.loginfo("Lifting arm: {}".format(amount_to_lift))
+        stretch_arm_raise = np.array([[-10, -10, -10, -10, amount_to_lift, 0]])
+        node.follow_trajectory(stretch_arm_raise)
+
+        ee_left = node.findPose('robot::link_gripper_finger_left')
+        ee_right = node.findPose('robot::link_gripper_finger_right')
+        base_link = node.findPose('robot::base_link')
+        # Reduce extension by the default gripper extension (0.34) and the offset of the gazebo box (0.04)
+        amount_to_extend = (unit_box_pose.translation.y - base_link.translation.y) - (0.34 + 0.02)
+        stretch_extend = np.array([[-10, -10, -10, amount_to_extend, -10, -10]])
+        rospy.loginfo("Stretch left finger before: {}".format(ee_left))
+        node.follow_trajectory(stretch_extend)
+        ee_left = node.findPose('robot::link_gripper_finger_left')
+        rospy.loginfo("Stretch left finger after: {}".format(ee_left))
+
         # node.follow_trajectory(data5)
         # node.follow_trajectory(data6)
         node.close_gripper()
+        stretch_retract = np.array([[-10, -10, -10, 0, -10, -10]])
+        node.follow_trajectory(stretch_retract)
     except KeyboardInterrupt:
         rospy.loginfo('interrupt received, so shutting down')
