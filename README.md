@@ -31,3 +31,5 @@ In a separate terminal
 ```shell
 rosrun stretch_skill_repair StretchSkill.py
 ```
+# Notes
+You may need to install ros-$ROS-DISTRO-realsense2-camera
