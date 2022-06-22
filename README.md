@@ -32,4 +32,4 @@ In a separate terminal
 rosrun stretch_skill_repair StretchSkill.py
 ```
 # Notes
-You may need to install ros-$ROS-DISTRO-realsense2-description
+You may need to install ros-$ROS_DISTRO-realsense2-description and ros-$ROS_DISTRO-moveit
