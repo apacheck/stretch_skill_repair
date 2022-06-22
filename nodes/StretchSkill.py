@@ -35,6 +35,8 @@ import hello_helpers.hello_misc as hm
 import moveit_commander
 import moveit_msgs.msg
 from moveit_commander.conversions import pose_to_list
+from synthesis_based_repair.tools import write_spec, clear_file, dict_to_formula, json_load_wrapper
+
 # import stretch_funmap.navigate as nv
 
 IS_SIM = True
@@ -137,6 +139,13 @@ class StretchSkill(hm.HelloNode):
 
         return trans
 
+    def getJointValues(self):
+        if IS_SIM:
+            move_group_arm = moveit_commander.MoveGroupCommander("stretch_arm")
+            joint_values = move_group_arm.get_current_joint_values()
+        else:
+            rospy.loginfo("Not implemented")
+        return joint_values
 
     def follow_trajectory(self, data):
         # Data should be a numpy array with x, y, theta, wrist_extension, z, wrist_theta
@@ -300,53 +309,60 @@ def findDeltaPose(arg_cur_pose, arg_desired_pose):
     return cmd_vx, cmd_vy, theta
 
 
+def findTrajectoryFromDMP(start_pose, end_pose, skill_name, dmp_folder, opts):
+    model = DMPNN(opts['start_dimension'], 1024, opts['dimension'], opts['basis_fs']).to(DEVICE)
+    model.load_state_dict(torch.load(dmp_folder + skill_name + ".pt"))
+    learned_weights = model(np_to_pgpu(start_pose))
+    dmp = DMP(opts['basis_fs'], opts['dt'], opts['dimension'])
+    # print("Calculating rollout")
+    learned_rollouts, _, _ = \
+        dmp.rollout_torch(torch.tensor(start_pose).to(DEVICE), torch.tensor(start_pose).to(DEVICE), learned_weights)
+    print(learned_rollouts)
+    return learned_rollouts
+
+
 if __name__ == '__main__':
     # Extension, lift, yaw
+    dmp_opts = json_load_wrapper("/home/adam/repos/synthesis_based_repair/data/stretch/stretch_dmp_opts.json")
+    folder_dmps = "/home/adam/repos/synthesis_based_repair/data/dmps/"
     try:
         parser = ap.ArgumentParser(description='Handover an object.')
         args, unknown = parser.parse_known_args()
         node = StretchSkill()
-        # data4 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch4/train/rollout-0.txt')
-        # data5 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch5/train/rollout-0.txt')
-        # data6 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch6/train/rollout-0.txt')
-        # data7 = np.loadtxt('/home/adam/repos/synthesis_based_repair/data/stretch/trajectories/skillStretch7/train/rollout-0.txt')
 
         unit_box_pose = node.findPose('unit_box::link')
-        stretch_base_box_pickup = np.array([[unit_box_pose.translation.x-.04, unit_box_pose.translation.y - 0.75, np.pi, -10, -10, -10]])
+        start_pose = node.getJointValues()
+        end_pose = np.array([unit_box_pose.translation.x-.04, unit_box_pose.translation.y - 0.75, np.pi, -10, -10, -10])
+        stretch_base_box_pickup[3:] = start_pose[3:]
         node.open_gripper()
         rospy.loginfo("Moving to box")
-        # node.follow_trajectory(stretch_base_box_pickup)
+        stretch_base_traj = findTrajectoryFromDMP(start_pose, end_pose, 'stretchSkill3to1', folder_dmps, dmp_opts)
+        node.follow_trajectory(stretch_base_traj)
 
-        # print("Going to zero")
-        # zeros_stretch = np.array([[-10, -10, -10, 0, .2, 0]])
-        # node.follow_trajectory(zeros_stretch)
+        # rospy.loginfo("Lifting arm")
         # ee_left = node.findPose('robot::link_gripper_finger_left')
-        # print(ee_left)
-
-        rospy.loginfo("Lifting arm")
-        ee_left = node.findPose('robot::link_gripper_finger_left')
-        ee_right = node.findPose('robot::link_gripper_finger_right')
-        link_lift = node.findPose('robot::link_lift')
-        amount_to_lift = (unit_box_pose.translation.z)-.03
-        rospy.loginfo("Lifting arm: {}".format(amount_to_lift))
-        stretch_arm_raise = np.array([[-10, -10, -10, -10, amount_to_lift, 0]])
-        node.follow_trajectory(stretch_arm_raise)
-
-        ee_left = node.findPose('robot::link_gripper_finger_left')
-        ee_right = node.findPose('robot::link_gripper_finger_right')
-        base_link = node.findPose('robot::base_link')
-        # Reduce extension by the default gripper extension (0.34) and the offset of the gazebo box (0.04)
-        amount_to_extend = (unit_box_pose.translation.y - base_link.translation.y) - (0.34 + 0.02)
-        stretch_extend = np.array([[-10, -10, -10, amount_to_extend, -10, -10]])
-        rospy.loginfo("Stretch left finger before: {}".format(ee_left))
-        node.follow_trajectory(stretch_extend)
-        ee_left = node.findPose('robot::link_gripper_finger_left')
-        rospy.loginfo("Stretch left finger after: {}".format(ee_left))
-
-        # node.follow_trajectory(data5)
-        # node.follow_trajectory(data6)
-        node.close_gripper()
-        stretch_retract = np.array([[-10, -10, -10, 0, -10, -10]])
-        node.follow_trajectory(stretch_retract)
+        # ee_right = node.findPose('robot::link_gripper_finger_right')
+        # link_lift = node.findPose('robot::link_lift')
+        # amount_to_lift = (unit_box_pose.translation.z)-.03
+        # rospy.loginfo("Lifting arm: {}".format(amount_to_lift))
+        # stretch_arm_raise = np.array([[-10, -10, -10, 0, amount_to_lift, 0]])
+        # node.follow_trajectory(stretch_arm_raise)
+        #
+        # ee_left = node.findPose('robot::link_gripper_finger_left')
+        # ee_right = node.findPose('robot::link_gripper_finger_right')
+        # base_link = node.findPose('robot::base_link')
+        # # Reduce extension by the default gripper extension (0.34) and the offset of the gazebo box (0.04)
+        # amount_to_extend = (unit_box_pose.translation.y - base_link.translation.y) - (0.34 + 0.02)
+        # stretch_extend = np.array([[-10, -10, -10, amount_to_extend, -10, -10]])
+        # rospy.loginfo("Stretch left finger before: {}".format(ee_left))
+        # node.follow_trajectory(stretch_extend)
+        # ee_left = node.findPose('robot::link_gripper_finger_left')
+        # rospy.loginfo("Stretch left finger after: {}".format(ee_left))
+        #
+        # # node.follow_trajectory(data5)
+        # # node.follow_trajectory(data6)
+        # node.close_gripper()
+        # stretch_retract = np.array([[-10, -10, -10, 0, -10, -10]])
+        # node.follow_trajectory(stretch_retract)
     except KeyboardInterrupt:
         rospy.loginfo('interrupt received, so shutting down')
