@@ -9,6 +9,7 @@ Turn on the stretch.
 Either ssh or connect directly to the stretch and run:
 ```shell
 roslaunch stretch_core stretch_driver.launch
+roslaunch stretch_skill_repair mocap_stretch.launch
 ```
 
 # In simulation

@@ -40,17 +40,21 @@ from synthesis_based_repair.tools import write_spec, clear_file, dict_to_formula
 # import stretch_funmap.navigate as nv
 
 IS_SIM = True
-ORIGIN_FRAME = 'odom'
-STRETCH_FRAME = 'robot::base_link'
-CMD_VEL_TOPIC = '/stretch_diff_drive_controller/cmd_vel'
-DO_THETA_CORRECTION = True
-DO_MOVE_ARM = True
-DO_MOVE_GRIPPER = True
-
-# IS_SIM = False
-# ORIGIN_FRAME = 'origin'
-# STRETCH_FRAME = 'stretch'
-# CMD_VEL_TOPIC = '/stretch/cmd_vel'
+if IS_SIM:
+    ORIGIN_FRAME = 'odom'
+    STRETCH_FRAME = 'robot::base_link'
+    CMD_VEL_TOPIC = '/stretch_diff_drive_controller/cmd_vel'
+    DO_THETA_CORRECTION = True
+    DO_MOVE_ARM = True
+    DO_MOVE_GRIPPER = True
+else:
+    IS_SIM = False
+    ORIGIN_FRAME = 'origin'
+    STRETCH_FRAME = 'stretch'
+    CMD_VEL_TOPIC = '/stretch/cmd_vel'
+    DO_THETA_CORRECTION = False
+    DO_MOVE_ARM = True
+    DO_MOVE_GRIPPER = True
 
 class StretchSkill(hm.HelloNode):
     def __init__(self):
