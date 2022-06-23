@@ -669,7 +669,7 @@
       </link>
       <pose frame=''>-1.79814 0.009958 0 0 -0 0</pose>
     </model>
-    <model name='unit_box'>
+    <model name='box_1'>
       <pose frame=''>2.86436 1.4677 0.5 0 -0 0</pose>
       <link name='link'>
         <inertial>
@@ -721,7 +721,7 @@
         <kinematic>0</kinematic>
       </link>
     </model>
-    <model name='unit_box_clone'>
+    <model name='box_2'>
       <pose frame=''>-1.93935 0.480785 1.04209 -3e-06 -1e-05 -2.6e-05</pose>
       <link name='link'>
         <inertial>
@@ -773,7 +773,7 @@
         <kinematic>0</kinematic>
       </link>
     </model>
-    <model name='unit_box_clone_clone'>
+    <model name='box_3'>
       <pose frame=''>0.178802 -0.894938 1.04209 3e-06 -0 -2.6e-05</pose>
       <link name='link'>
         <inertial>
@@ -825,7 +825,7 @@
         <kinematic>0</kinematic>
       </link>
     </model>
-    <model name='unit_box_clone_clone_clone'>
+    <model name='box_obstacle'>
       <pose frame=''>-0.312741 -0.881961 1.04209 1.6e-05 2e-06 -2.5e-05</pose>
       <link name='link'>
         <inertial>
@@ -922,7 +922,7 @@
           <wrench>0 0 0 0 -0 0</wrench>
         </link>
       </model>
-      <model name='unit_box'>
+      <model name='box_1'>
         <pose frame=''>0.499885 1.25001 0.842077 -1.1e-05 1e-06 0.001903</pose>
         <scale>0.048929 0.055126 0.054173</scale>
         <link name='link'>
@@ -932,7 +932,7 @@
           <wrench>0 0 -9.8 0 -0 0</wrench>
         </link>
       </model>
-      <model name='unit_box_clone'>
+      <model name='box_2'>
         <pose frame=''>-2.25003 1e-06 0.842103 -0 -0.001041 -0.000114</pose>
         <scale>1 1 1</scale>
         <link name='link'>
@@ -942,7 +942,7 @@
           <wrench>0 0 -9.8 0 -0 0</wrench>
         </link>
       </model>
-      <model name='unit_box_clone_clone'>
+      <model name='box_3'>
         <pose frame=''>0.499996 -1.25 0.84209 6e-06 -0.000157 2.4e-05</pose>
         <scale>1 1 1</scale>
         <link name='link'>
@@ -952,7 +952,7 @@
           <wrench>0.038481 -0.043358 -0.078863 0 -0 0</wrench>
         </link>
       </model>
-      <model name='unit_box_clone_clone_clone'>
+      <model name='box_obstacle'>
         <pose frame=''>-0.210613 -1.25 1.01724 -3e-06 1e-06 9.6e-05</pose>
         <scale>7.02702 4.31861 7.46664</scale>
         <link name='link'>
