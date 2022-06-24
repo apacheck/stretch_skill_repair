@@ -54,6 +54,7 @@ if IS_SIM:
     DO_THETA_CORRECTION = False
     DO_MOVE_ARM = False
     DO_MOVE_GRIPPER = False
+    OBJ_NAME = 'box_2::base_link'
 else:
     IS_SIM = False
     ORIGIN_FRAME = 'origin'
@@ -62,6 +63,7 @@ else:
     DO_THETA_CORRECTION = False
     DO_MOVE_ARM = True
     DO_MOVE_GRIPPER = True
+    OBJ_NAME = 'duck'
 
 class StretchSkill(hm.HelloNode):
     def __init__(self):
@@ -348,18 +350,22 @@ def findTrajectoryFromDMP(start_pose, end_pose, skill_name, dmp_folder, opts):
 
 def findObjectPickupPose(obj_pose, obj_name):
     stretch_pose = -10 * np.ones([1, 6])
-    if block_name == "box_1":
+    if obj_name == "box_1::base_link":
         stretch_pose[0] = obj_pose.translation.x - 0.04
         stretch_pose[1] = obj_pose.translation.y - 0.75
         stretch_pose[2] = np.pi
-    elif block_name == "box_2":
+    elif obj_name == "box_2::base_link":
         stretch_pose[0] = obj_pose.translation.x - 0.75
         stretch_pose[1] = obj_pose.translation.y - 0.04
         stretch_pose[2] = 3 * np.pi / 2
-    elif block_name == "box_3":
+    elif obj_name == "box_3::base_link":
         stretch_pose[0] = obj_pose.translation.x + 0.04
         stretch_pose[1] = obj_pose.translation.y + 0.75
         stretch_pose[2] = 0
+    elif obj_name == 'duck':
+        stretch_pose[0] = obj_pose.translation.x - 0.04
+        stretch_pose[1] = obj_pose.translation.y - 0.75
+        stretch_pose[2] = np.pi
 
     return stretch_pose
 
@@ -382,52 +388,56 @@ if __name__ == '__main__':
         node = StretchSkill()
 
         # Find where the robot is, where it should pickup the block, and how it should get between them
-        unit_box_pose = node.findPose('box_2::link')
-        base_link = node.findPose('robot::base_link')
-        start_pose = np.array([base_link.translation.x, base_link.translation.y, 0, -10, -10, -10])
-        end_pose = findObjectPickupPose(unit_box_pose, 'box_2')
-        jv = node.getJointValues()
-        start_pose = addJointValuesToPose(start_pose, jv)
-        end_pose = addJointValuesToPose(end_pose, jv)
+        if IS_SIM:
+            unit_box_pose = node.findPose(OBJ_NAME)
+            base_link = node.findPose(STRETCH_FRAME)
+            start_pose = np.array([base_link.translation.x, base_link.translation.y, 0, -10, -10, -10])
+            end_pose = findObjectPickupPose(unit_box_pose, OBJ_NAME)
+            jv = node.getJointValues()
+            start_pose = addJointValuesToPose(start_pose, jv)
+            end_pose = addJointValuesToPose(end_pose, jv)
 
-        rospy.loginfo("Startpose: {}".format(start_pose))
-        rospy.loginfo("End pose: {}".format(end_pose))
+            rospy.loginfo("Startpose: {}".format(start_pose))
+            rospy.loginfo("End pose: {}".format(end_pose))
 
-        node.open_gripper()
-        rospy.loginfo("Moving to box")
-        stretch_base_traj = findTrajectoryFromDMP(start_pose, end_pose, 'skillStretch1to2', folder_dmps, dmp_opts)
-        node.follow_trajectory(stretch_base_traj)
+            node.open_gripper()
+            rospy.loginfo("Moving to box")
+            stretch_base_traj = findTrajectoryFromDMP(start_pose, end_pose, 'skillStretch1to2', folder_dmps, dmp_opts)
+            node.follow_trajectory(stretch_base_traj)
 
-        # correct final pose
-        node.rotateToTheta(end_pose[2])
+            # correct final pose
+            node.rotateToTheta(end_pose[2])
 
-        # Reach the block
+        if not IS_SIM:
+            # Retracts arm all the way, lifts, extends, and lifts a little more
+
+            rospy.loginfo("Retracting arm")
+            stretch_arm_retract = np.array([0, -10, -10])
+            node.move_arm(stretch_arm_retract)
+
+            unit_box_pose = node.findPose(OBJ_NAME)
+            # TODO: Change the 0.03 to the correct value/find it from the robot URDF
+            amount_to_lift = (unit_box_pose.translation.z)-.03
+            rospy.loginfo("Lifting arm to: {}".format(amount_to_lift))
+            stretch_arm_raise = np.array([0, amount_to_lift, 0])
+            node.move_arm(stretch_arm_raise)
 
 
-        # rospy.loginfo("Lifting arm")
-        # ee_left = node.findPose('robot::link_gripper_finger_left')
-        # ee_right = node.findPose('robot::link_gripper_finger_right')
-        # link_lift = node.findPose('robot::link_lift')
-        # amount_to_lift = (unit_box_pose.translation.z)-.03
-        # rospy.loginfo("Lifting arm: {}".format(amount_to_lift))
-        # stretch_arm_raise = np.array([[-10, -10, -10, 0, amount_to_lift, 0]])
-        # node.follow_trajectory(stretch_arm_raise)
-        #
-        # ee_left = node.findPose('robot::link_gripper_finger_left')
-        # ee_right = node.findPose('robot::link_gripper_finger_right')
-        # base_link = node.findPose('robot::base_link')
-        # # Reduce extension by the default gripper extension (0.34) and the offset of the gazebo box (0.04)
-        # amount_to_extend = (unit_box_pose.translation.y - base_link.translation.y) - (0.34 + 0.02)
-        # stretch_extend = np.array([[-10, -10, -10, amount_to_extend, -10, -10]])
-        # rospy.loginfo("Stretch left finger before: {}".format(ee_left))
-        # node.follow_trajectory(stretch_extend)
-        # ee_left = node.findPose('robot::link_gripper_finger_left')
-        # rospy.loginfo("Stretch left finger after: {}".format(ee_left))
-        #
-        # # node.follow_trajectory(data5)
-        # # node.follow_trajectory(data6)
-        # node.close_gripper()
-        # stretch_retract = np.array([[-10, -10, -10, 0, -10, -10]])
-        # node.follow_trajectory(stretch_retract)
+            base_link = node.findPose(STRETCH_FRAME)
+            # Reduce extension by the default gripper extension (0.34) and the offset of the gazebo box (0.04)
+            # TODO check these values on real robot/find from URDF
+            amount_to_extend = (unit_box_pose.translation.y - base_link.translation.y) - (0.34 + 0.02)
+            rospy.loginfo("Extending arm to: {}".format(amount_to_extend))
+            stretch_extend = np.array([ amount_to_extend, -10, -10])
+            node.move_arm(stretch_extend)
+            # ee_left = node.findPose('robot::link_gripper_finger_left')
+            # rospy.loginfo("Stretch left finger after: {}".format(ee_left))
+
+            node.close_gripper()
+
+            rospy.loginfo("Lifting arm")
+            stretch_lift_with_duck = np.array([-10, amount_to_lift + 0.05, -10])
+            node.follow_trajectory(stretch_lift_with_duck)
+
     except KeyboardInterrupt:
         rospy.loginfo('interrupt received, so shutting down')
