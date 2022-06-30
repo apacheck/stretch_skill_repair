@@ -674,7 +674,7 @@
       <pose frame=''>2.86436 1.4677 0.5 0 -0 0</pose>
       <link name='link'>
         <inertial>
-          <mass>1</mass>
+          <mass>0.01</mass>
           <inertia>
             <ixx>0.166667</ixx>
             <ixy>0</ixy>
@@ -726,7 +726,7 @@
       <pose frame=''>-1.93935 0.480785 1.04209 -3e-06 -1e-05 -2.6e-05</pose>
       <link name='link'>
         <inertial>
-          <mass>1</mass>
+          <mass>0.01</mass>
           <inertia>
             <ixx>0.166667</ixx>
             <ixy>0</ixy>
@@ -778,7 +778,7 @@
       <pose frame=''>0.178802 -0.894938 1.04209 3e-06 -0 -2.6e-05</pose>
       <link name='link'>
         <inertial>
-          <mass>1</mass>
+          <mass>0.01</mass>
           <inertia>
             <ixx>0.166667</ixx>
             <ixy>0</ixy>
