@@ -14,11 +14,11 @@ roslaunch stretch_skill_repair mocap_stretch.launch
 
 # In simulation
 We will use https://github.com/pal-robotics/gazebo_ros_link_attacher to make the gripper successfully pick up an object in simulation.
-This line: <plugin name="ros_link_attacher_plugin" filename="libgazebo_ros_link_attacher.so"/> is added to the world file to enable it.
+This line: \<plugin name="ros_link_attacher_plugin" filename="libgazebo_ros_link_attacher.so"/\> is added to the world file to enable it.
 
 You may need to run catkin build or catkin_make and make some of the files executable
 ```shell
-roslaunch stretch_gazebo gazebo.launch world:=[PATH TO CATKIN_WS]/catkin_ws/src/stretch_skill_repair/worlds/three_tables2.world
+roslaunch stretch_skill_repair gazebo.launch world:=[PATH TO CATKIN_WS]/catkin_ws/src/stretch_skill_repair/worlds/three_ducks.world
 ```
 
 In a separate terminal
