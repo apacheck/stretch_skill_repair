@@ -853,7 +853,7 @@
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>model://duck2.dae</uri>
+              <uri>model://duck/meshes/duck.dae</uri>
             </mesh>
           </geometry>
           <max_contacts>10</max_contacts>
@@ -874,7 +874,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>model://duck2.dae</uri>
+              <uri>model://duck/meshes/duck.dae</uri>
             </mesh>
           </geometry>
         </visual>
@@ -903,7 +903,7 @@
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>model://duck2.dae</uri>
+              <uri>model://duck/meshes/duck.dae</uri>
             </mesh>
           </geometry>
           <max_contacts>10</max_contacts>
@@ -924,7 +924,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>model://duck2.dae</uri>
+              <uri>model://duck/meshes/duck.dae</uri>
             </mesh>
           </geometry>
         </visual>
@@ -953,7 +953,7 @@
         <collision name='collision'>
           <geometry>
             <mesh>
-              <uri>model://duck2.dae</uri>
+              <uri>model://duck/meshes/duck.dae</uri>
             </mesh>
           </geometry>
           <max_contacts>10</max_contacts>
@@ -974,7 +974,7 @@
           <pose>0 0 0 0 -0 0</pose>
           <geometry>
             <mesh>
-              <uri>model://duck2.dae</uri>
+              <uri>model://duck/meshes/duck.dae</uri>
             </mesh>
           </geometry>
         </visual>
