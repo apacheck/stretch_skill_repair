@@ -26,7 +26,7 @@ In a separate terminal
 roslaunch stretch_moveit_config demo_gazebo.launch
 ```
 
-In a separate terminal
+~~In a separate terminal~~
 ```shell
 rosrun stretch_skill_repair gazebo_tf_publisher.py
 ```
