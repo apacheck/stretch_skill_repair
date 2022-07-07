@@ -25,6 +25,8 @@ import time
 import threading
 import sys
 
+from math import dist
+
 import tf2_ros
 import argparse as ap
 import numpy as np
@@ -405,8 +407,58 @@ def addJointValuesToPose(arg_stretch_pose, arg_joint_values):
 
 
 def findArmExtensionAndRotation(goal_pose, robot_pose):
-    amount_to_extend = 0
-    wrist_theta = 0
+    GtoW = 0.23 #Grip to Wrist Distance
+
+    xd = goal_pose.translation.x
+    yd = goal_pose.translation.y
+
+    xr = robot_pose.translation.x
+    yr = robot_pose.translation.y
+
+    qr = findTheta(robot_pose)
+    print('Hello', qr)
+
+    p = yr - (xr*np.tan(qr)) - yd
+
+    #Solving quadratic equation
+
+    a = 1 + (np.tan(qr)**2)
+    b = (-2*xd) + (2*p*np.tan(qr))
+    c = xd**2 + p**2 - GtoW**2
+
+    # Discriminant
+
+    d = (b**2) - (4*a*c)
+
+    # X values
+
+    x1 = (-b + np.sqrt(d))/(2*a)
+    x2 = (-b - np.sqrt(d))/(2*a)
+
+    y1 = (np.tan(qr) * x1) + yr - (xr*np.tan(qr))
+    y2 = (np.tan(qr) * x2) + yr - (xr*np.tan(qr))
+
+    pt1 = (x1,y1)
+    pt2 = (x2,y2)
+
+    robot = (xr,yr)
+
+    dist1 = dist(pt1,robot)
+    dist2 = dist(pt2,robot)
+
+    if dist1<dist2:
+        amount_to_extend = dist1
+
+    else:
+         amount_to_extend = dist2
+
+
+    g = (yd - yr - (amount_to_extend*np,sin(qr)))/GtoW
+    wrist_theta = np.arcsin(g) - qr
+
+    # amount_to_extend = 0
+    # wrist_theta = 0
+
     return amount_to_extend, wrist_theta
 
 
@@ -498,12 +550,12 @@ if __name__ == '__main__':
             base_link = node.findPose(STRETCH_FRAME)
             # Reduce extension by the default gripper extension (0.34) and the offset of the gazebo box (0.04)
             # TODO check these values on real robot/find from URDF
-            # amount_to_extend, wrist_theta = findArmExtensionAndRotation(unit_box_pose, base_link)
-            amount_to_extend = (unit_box_pose.translation.y - base_link.translation.y) - (0.34 + 0.02)
-            # rospy.loginfo("Extending arm to: {}. Rotating wrist to: {}".format(amount_to_extend, wrist_theta))
-            rospy.loginfo("Extending arm to: {}".format(amount_to_extend))
-            # stretch_extend = np.array([ amount_to_extend, -10, wrist_theta])
-            stretch_extend = np.array([ amount_to_extend, -10, -10])
+            amount_to_extend, wrist_theta = findArmExtensionAndRotation(unit_box_pose, base_link)
+            # amount_to_extend = (unit_box_pose.translation.y - base_link.translation.y) - (0.34 + 0.02)
+            rospy.loginfo("Extending arm to: {}. Rotating wrist to: {}".format(amount_to_extend, wrist_theta))
+            # rospy.loginfo("Extending arm to: {}".format(amount_to_extend))
+            stretch_extend = np.array([ amount_to_extend, -10, wrist_theta])
+            # stretch_extend = np.array([ amount_to_extend, -10, -10])
             node.moveArm(stretch_extend)
             # ee_left = node.findPose('robot::link_gripper_finger_left')
             # rospy.loginfo("Stretch left finger after: {}".format(ee_left))
