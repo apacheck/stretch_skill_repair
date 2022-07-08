@@ -333,21 +333,28 @@ def thresholdVel(arg_cmd_v, arg_cmd_w, arg_maxV, arg_wheel2center):
 def findCommands(arg_cur_pose, arg_desired_pose):
     cmd_vx = arg_desired_pose[0] - arg_cur_pose.translation.x
     cmd_vy = arg_desired_pose[1] - arg_cur_pose.translation.y
-    q1 = arg_cur_pose.rotation.x
-    q2 = arg_cur_pose.rotation.y
-    q3 = arg_cur_pose.rotation.z
-    q0 = arg_cur_pose.rotation.w
-    theta = np.arctan2(2 * (q1 * q2 + q0 * q3), q0 ** 2 + q1 ** 2 - q2 ** 2 - q3 **2)
-    if not IS_SIM:
-        theta -= np.pi
+    theta = findTheta(arg_cur_pose)
     return cmd_vx, cmd_vy, theta
 
 def findTheta(arg_cur_pose):
+    """Finds the orientation of the robot given the pose with quaternion info
+
+    Given the pose of the robot as a transfrom, returns the orientation aka
+    theta of the robot. Uses the formula here:
+    https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+
+    Args:
+        arg_cur_pose: transform_msg
+
+    Returns:
+        theta: np.array
+    """
     q1 = arg_cur_pose.rotation.x
     q2 = arg_cur_pose.rotation.y
     q3 = arg_cur_pose.rotation.z
     q0 = arg_cur_pose.rotation.w
     theta = np.arctan2(2 * (q1 * q2 + q0 * q3), q0 ** 2 + q1 ** 2 - q2 ** 2 - q3 **2)
+    # theta = np.arctan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3))
     if not IS_SIM:
         theta -= np.pi
     return theta
@@ -374,6 +381,8 @@ def findTrajectoryFromDMP(start_pose, end_pose, skill_name, dmp_folder, opts):
 
 
 def findObjectPickupPose(obj_pose, obj_name):
+    """Finds where the robot should go to pickup and object
+    """
     stretch_pose = -10 * np.ones([1, 6])
     if obj_name == "box_1::base_link":
         stretch_pose[0] = obj_pose.translation.x - 0.04
@@ -401,6 +410,12 @@ def addJointValuesToPose(arg_stretch_pose, arg_joint_values):
     arg_stretch_pose[5] = arg_joint_values[2]
 
     return arg_stretch_pose
+
+
+def plotTrajectory(arg_trajectory):
+    """Plots the trajectory of the stretch moving the base and arm
+    """
+    pass
 
 
 if __name__ == '__main__':
