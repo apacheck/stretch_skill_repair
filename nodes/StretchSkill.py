@@ -352,8 +352,8 @@ def findTheta(arg_cur_pose):
     q2 = arg_cur_pose.rotation.y
     q3 = arg_cur_pose.rotation.z
     q0 = arg_cur_pose.rotation.w
-    theta = np.arctan2(2 * (q1 * q2 + q0 * q3), q0 ** 2 + q1 ** 2 - q2 ** 2 - q3 **2)
-    # theta = np.arctan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3))
+    # theta = np.arctan2(2 * (q1 * q2 + q0 * q3), q0 ** 2 + q1 ** 2 - q2 ** 2 - q3 **2)
+    theta = np.arctan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3))
     if not IS_SIM:
         theta -= np.pi
     return theta
