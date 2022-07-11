@@ -346,11 +346,21 @@ def findCommands(arg_cur_pose, arg_desired_pose):
     return cmd_vx, cmd_vy, theta
 
 def findTheta(arg_cur_pose):
+    """Finds the orientation of the robot given the pose with quaternion info
+    Given the pose of the robot as a transfrom, returns the orientation aka
+    theta of the robot. Uses the formula here:
+    https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+    Args:
+        arg_cur_pose: transform_msg
+    Returns:
+        theta: np.array
+    """
     q1 = arg_cur_pose.rotation.x
     q2 = arg_cur_pose.rotation.y
     q3 = arg_cur_pose.rotation.z
     q0 = arg_cur_pose.rotation.w
-    theta = np.arctan2(2 * (q1 * q2 + q0 * q3), q0 ** 2 + q1 ** 2 - q2 ** 2 - q3 **2)
+    # theta = np.arctan2(2 * (q1 * q2 + q0 * q3), q0 ** 2 + q1 ** 2 - q2 ** 2 - q3 **2)
+    theta = np.arctan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3))
     if not IS_SIM:
         theta -= np.pi
     return theta
@@ -416,7 +426,7 @@ def findArmExtensionAndRotation(goal_pose, robot_pose):
     yr = robot_pose.translation.y
 
     qr = findTheta(robot_pose)
-    print('Hello', qr)
+    print('value of qr -> ', qr)
 
     p = yr - (xr*np.tan(qr)) - yd
 
@@ -429,7 +439,7 @@ def findArmExtensionAndRotation(goal_pose, robot_pose):
     # Discriminant
 
     d = (b**2) - (4*a*c)
-
+    print("Value of d -> ",d)
     # X values
 
     x1 = (-b + np.sqrt(d))/(2*a)
@@ -451,7 +461,6 @@ def findArmExtensionAndRotation(goal_pose, robot_pose):
 
     else:
          amount_to_extend = dist2
-
 
     g = (yd - yr - (amount_to_extend*np,sin(qr)))/GtoW
     wrist_theta = np.arcsin(g) - qr
