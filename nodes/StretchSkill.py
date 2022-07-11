@@ -343,7 +343,7 @@ def findTheta(arg_cur_pose):
     https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 
     Args:
-        arg_cur_pose: transform_msg
+        arg_cur_pose: geometry_msgs.msg.Transform()
 
     Returns:
         theta: np.array
