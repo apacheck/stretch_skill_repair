@@ -435,7 +435,7 @@ def findArmExtensionAndRotation(goal_pose, robot_pose):
     a = 1 + (np.tan(qr)**2)
     b = (-2*xd) + (2*p*np.tan(qr))
     c = xd**2 + p**2 - GtoW**2
-
+    
     # Discriminant
 
     d = (b**2) - (4*a*c)
