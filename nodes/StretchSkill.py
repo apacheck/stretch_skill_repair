@@ -425,8 +425,8 @@ def findArmExtensionAndRotation(goal_pose, robot_pose):
     xr = robot_pose.translation.x
     yr = robot_pose.translation.y
 
-    qr = findTheta(robot_pose)
-    print('value of qr -> ', qr)
+    qrobot = findTheta(robot_pose)
+    qr = qrobot - (np.pi)/2
 
     p = yr - (xr*np.tan(qr)) - yd
 
@@ -435,11 +435,10 @@ def findArmExtensionAndRotation(goal_pose, robot_pose):
     a = 1 + (np.tan(qr)**2)
     b = (-2*xd) + (2*p*np.tan(qr))
     c = xd**2 + p**2 - GtoW**2
-    
+
     # Discriminant
 
     d = (b**2) - (4*a*c)
-    print("Value of d -> ",d)
     # X values
 
     x1 = (-b + np.sqrt(d))/(2*a)
@@ -462,7 +461,8 @@ def findArmExtensionAndRotation(goal_pose, robot_pose):
     else:
          amount_to_extend = dist2
 
-    g = (yd - yr - (amount_to_extend*np,sin(qr)))/GtoW
+    print("Amount to extend ->",amount_to_extend)
+    g = (yd - yr - (amount_to_extend * np,sin(qr)))/GtoW
     wrist_theta = np.arcsin(g) - qr
 
     # amount_to_extend = 0
