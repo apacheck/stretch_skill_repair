@@ -461,8 +461,8 @@ def findArmExtensionAndRotation(goal_pose, robot_pose):
     else:
          amount_to_extend = dist2
 
-    print("Amount to extend ->",amount_to_extend)
-    g = (yd - yr - (amount_to_extend * np,sin(qr)))/GtoW
+    g = (yd - yr - (amount_to_extend * np.sin(qr)))/GtoW
+    print("sin inverse ->",np.arcsin(g))
     wrist_theta = np.arcsin(g) - qr
 
     # amount_to_extend = 0
@@ -565,6 +565,7 @@ if __name__ == '__main__':
             # rospy.loginfo("Extending arm to: {}".format(amount_to_extend))
             stretch_extend = np.array([ amount_to_extend, -10, wrist_theta])
             # stretch_extend = np.array([ amount_to_extend, -10, -10])
+            print("AMOUNT EXTEND ->",amount_to_extend)
             node.moveArm(stretch_extend)
             # ee_left = node.findPose('robot::link_gripper_finger_left')
             # rospy.loginfo("Stretch left finger after: {}".format(ee_left))
