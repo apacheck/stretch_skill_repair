@@ -361,8 +361,8 @@ def findTheta(arg_cur_pose):
     q0 = arg_cur_pose.rotation.w
     # theta = np.arctan2(2 * (q1 * q2 + q0 * q3), q0 ** 2 + q1 ** 2 - q2 ** 2 - q3 **2)
     theta = np.arctan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3))
-    if not IS_SIM:
-        theta -= np.pi
+    # if not IS_SIM:
+        # theta -= np.pi
     return theta
 
 
@@ -426,7 +426,9 @@ def findArmExtensionAndRotation(goal_pose, robot_pose):
     yr = robot_pose.translation.y
 
     qrobot = findTheta(robot_pose)
+    print("ThetaRobot -> ", qrobot)
     qr = qrobot - (np.pi)/2
+    print("thetaARM -> ",qr)
 
     p = yr - (xr*np.tan(qr)) - yd
 
@@ -461,9 +463,12 @@ def findArmExtensionAndRotation(goal_pose, robot_pose):
     else:
          amount_to_extend = dist2
 
+    print("AmountEXTEND -> ", amount_to_extend)
     g = (yd - yr - (amount_to_extend * np.sin(qr)))/GtoW
+    print("Value of g -> ", g)
     print("sin inverse ->",np.arcsin(g))
     wrist_theta = np.arcsin(g) - qr
+    print("ThetaWrist -> ", wrist_theta)
 
     # amount_to_extend = 0
     # wrist_theta = 0
@@ -565,7 +570,6 @@ if __name__ == '__main__':
             # rospy.loginfo("Extending arm to: {}".format(amount_to_extend))
             stretch_extend = np.array([ amount_to_extend, -10, wrist_theta])
             # stretch_extend = np.array([ amount_to_extend, -10, -10])
-            print("AMOUNT EXTEND ->",amount_to_extend)
             node.moveArm(stretch_extend)
             # ee_left = node.findPose('robot::link_gripper_finger_left')
             # rospy.loginfo("Stretch left finger after: {}".format(ee_left))
