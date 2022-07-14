@@ -434,7 +434,7 @@ if __name__ == '__main__':
             start_pose = addJointValuesToPose(start_pose, jv)
             end_pose = addJointValuesToPose(end_pose, jv)
 
-            rospy.loginfo("Startpose: {}".format(start_pose))
+            rospy.loginfo("Start pose: {}".format(start_pose))
             rospy.loginfo("End pose: {}".format(end_pose))
 
             node.openGripper()
