@@ -19,6 +19,10 @@ from geometry_msgs.msg import PointStamped
 from sensor_msgs.msg import PointCloud2
 
 from std_srvs.srv import Trigger, TriggerRequest, TriggerResponse
+from aut_tools import find_intermediate_symbols, find_skill_to_run, find_state_number, update_state, parse_spec, parse_aut, find_symbols
+import argparse
+from synthesis_based_repair.skills import load_skills_from_json
+from synthesis_based_repair.symbols import load_symbols
 
 import math
 import time
@@ -52,6 +56,9 @@ if IS_SIM:
     ORIGIN_FRAME = 'odom'
     STRETCH_FRAME = 'robot::base_link'
     CMD_VEL_TOPIC = '/stretch_diff_drive_controller/cmd_vel'
+    EE_FRAME = "robot::link_gripper_finger_left"
+    DUCK1_FRAME = "duck_1::body"
+    DUCK2_FRAME = "duck_2::body"
     DO_THETA_CORRECTION = False
     DO_MOVE_GRIPPER = True
     OBJ_NAME = 'duck_1::body'
@@ -97,6 +104,48 @@ class StretchSkill(hm.HelloNode):
 
             with self.move_lock:
                 self.handover_goal_ready = False
+
+    def setStretchFrame(self, stretch_frame):
+        self.stretch_frame = stretch_frame
+
+    def setEEFrame(self, ee_frame):
+        self.ee_frame = ee_frame
+
+    def setDuck1Frame(self, duck1_frame):
+        self.duck1_frame = duck1_frame
+
+    def setDuck2Frame(self, duck2_frame):
+        self.duck2_frame = duck2_frame
+
+    def setOriginFrame(self, origin_frame):
+        self.origin_frame = origin_frame
+
+    def getWorldState(self):
+        """Gets the state of the world
+
+        """
+
+        robot = self.findPose(self.stretch_frame)
+        ee = self.findPose(self.ee_frame)
+        duck1 = self.findPose(self.duck1_frame)
+        duck2 = self.findPose(self.duck2_frame)
+
+        state = np.zeros([1, 12])
+        state[0, 0] = robot.translation.x
+        state[0, 1] = robot.translation.y
+        state[0, 2] = findTheta(robot)
+        state[0, 3] = ee.translation.x
+        state[0, 4] = ee.translation.y
+        state[0, 5] = ee.translation.z
+        state[0, 6] = duck1.translation.x
+        state[0, 7] = duck1.translation.y
+        state[0, 8] = duck1.translation.z
+        state[0, 9] = duck2.translation.x
+        state[0, 10] = duck2.translation.y
+        state[0, 11] = duck2.translation.z
+
+        return state
+
 
     def openGripper(self):
         if DO_MOVE_GRIPPER:
@@ -168,7 +217,7 @@ class StretchSkill(hm.HelloNode):
         cnt = 1
         while not found_transform:
             try:
-                trans_stamped = self.tfBuffer.lookup_transform(ORIGIN_FRAME, frame, rospy.Time.now(), rospy.Duration(1.0))
+                trans_stamped = self.tfBuffer.lookup_transform(self.origin_frame, frame, rospy.Time.now(), rospy.Duration(1.0))
                 trans = trans_stamped.transform
                 found_transform = True
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
@@ -179,6 +228,18 @@ class StretchSkill(hm.HelloNode):
                 continue
 
         return trans
+
+    def getRobotState(self):
+        robot = self.findPose(self.stretch_frame)
+        joints = self.getJointValues()
+
+        out = np.zeros([1, 6])
+        out[0, 0] = robot.translation.x
+        out[0, 1] = robot.translation.y
+        out[0, 2] = findTheta(robot)
+        out[0, 3:] = joints
+
+        return out
 
     def getJointValues(self):
         # Returns extension, lift, wrist yaw
@@ -193,7 +254,8 @@ class StretchSkill(hm.HelloNode):
         # Data should be a numpy array with x, y, theta, wrist_extension, z, wrist_theta
         rospy.loginfo("Starting followTrajectory")
 
-        for d in data:
+        traj_log = np.zeros([data.shape[0], 12])
+        for ii, d in enumerate(data):
 
             self.moveArm(d[3:])
 
@@ -210,10 +272,14 @@ class StretchSkill(hm.HelloNode):
 
             rospy.loginfo("Robot is at: x: {:.3f}, y: {:.3f}, z: {:.3f}, theta: {:.3f}".format(trans_stretch.translation.x, trans_stretch.translation.y, trans_stretch.translation.z, theta))
 
+            traj_log[ii, :] = self.getWorldState()
+
         rospy.loginfo("Completed followTrajectory")
 
         if IS_SIM:
             self.move_group_arm.stop()
+
+        return traj_log
 
     def rotateToTheta(self, arg_goal_theta, arg_close_enough=0.05):
         make_theta_correction = True
@@ -309,6 +375,27 @@ class StretchSkill(hm.HelloNode):
 
         return True
 
+    def run_skill(self, skill_name, inp_state, inp_robot, sym_state, skills, dmp_folder, opts):
+        base_skill = skill_name.split("_")[0]
+        end_robot = skills[skill_name].get_final_robot_pose()
+        split_skill_name = skill_name.split("_")[0]
+        traj = findTrajectoryFromDMP(inp_state, end_robot, split_skill_name, dmp_folder, opts)
+
+        if base_skill in ['skillStretch3to1', 'skillStretch1to2', 'skillStretch2to3']:
+            intermediate_states = self.followTrajectory(traj)
+        elif base_skill in ['skillStretchDownUp1', 'skillStretchDownUp2', 'skillStretchDownUp3']:
+            n_waypoints = traj.shape[0]
+            first_half = self.followTrajectory(traj[:n_waypoints, :])
+            if 'place' in skill_name:
+                self.openGripper()
+            elif 'pickup' in skill_name:
+                self.closeGripper()
+            second_half = self.followTrajectory(traj[n_waypoints:, :])
+            intermediate_states = np.vstack([first_half, second_half])
+
+        return intermediate_states
+
+
 def feedbackLin(arg_cmd_vx, arg_cmd_vy, arg_theta, arg_epsilon):
     cmd_vi = np.array([[arg_cmd_vx], [arg_cmd_vy]])
     R_b_i = np.array([[np.cos(arg_theta), np.sin(arg_theta)], [-np.sin(arg_theta), np.cos(arg_theta)]])
@@ -356,6 +443,10 @@ def findTheta(arg_cur_pose):
     theta = np.arctan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3))
     if not IS_SIM:
         theta -= np.pi
+
+    if theta < 0:
+        theta += 2 * np.pi
+
     return theta
 
 
@@ -415,105 +506,102 @@ def plotTrajectory(arg_trajectory):
     pass
 
 
+def main():
+    node = StretchSkill()
+    print(node.getJointValues())
+    node.setEEFrame(EE_FRAME)
+    node.setStretchFrame(STRETCH_FRAME)
+    node.setOriginFrame(ORIGIN_FRAME)
+    node.setDuck1Frame(DUCK1_FRAME)
+    node.setDuck2Frame(DUCK2_FRAME)
+    node.moveArm(np.array([0.7, -10, -10]))
+
+    # Arguments/variables
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file_names", help="File names", required=True)
+    parser.add_argument("--sym_opts", help="Opts involving spec writing and repair", required=True)
+    parser.add_argument("--dmp_opts", help="Opts involving plotting, repair, dmps", required=True)
+    args = parser.parse_args()
+
+    file_names = json_load_wrapper(args.file_names)
+    sym_opts = json_load_wrapper(args.sym_opts)
+    dmp_opts = json_load_wrapper(args.dmp_opts)
+
+    symbols = load_symbols("/home/adam/repos/synthesis_based_repair/data/stretch/stretch_symbols.json")
+    skills = load_skills_from_json("/home/adam/repos/synthesis_based_repair/data/stretch/stretch_skills.json")
+    workspace_bnds = np.array(dmp_opts["workspace_bnds"])
+    dmp_folder = "/home/adam/repos/synthesis_based_repair/data/dmps/"
+    file_structured_slugs = "/home/adam/repos/synthesis_based_repair/data/stretch/stretch.structuredslugs"
+    file_aut = "/home/adam/repos/synthesis_based_repair/data/stretch/stretch_strategy.aut"
+
+    # Load in specification
+    state_variables, action_variables = parse_spec(file_structured_slugs)
+    state_def, next_states, rank_def = parse_aut(file_aut, state_variables, action_variables)
+
+    # Find initial state
+    previous_state_number = '0'
+    previous_skill = ' '
+    previous_skill_full = ' '
+
+    while not rospy.is_shutdown():
+        world_state = node.getWorldState()
+        rospy.loginfo("Current state: {}".format(world_state))
+        syms_true = find_symbols(world_state, symbols)
+        rospy.loginfo("Symbols true: {}".format(syms_true))
+        state_number = find_state_number(state_def, next_states, previous_state_number, previous_skill_full, syms_true)
+        skill_to_run_full = find_skill_to_run(next_states, state_number)
+        skill_to_run = skill_to_run_full
+        rospy.loginfo("Executing skill: {}".format(skill_to_run))
+
+        if skill_to_run != " ":
+            robot_state = node.getRobotState()
+            intermediate_states = node.run_skill(skill_to_run, world_state, robot_state, syms_true, symbols, dmp_folder, dmp_opts)
+
+            intermediate_states_desired = find_intermediate_symbols(intermediate_states, symbols)
+
+            previous_state_number, previous_skill = update_state(intermediate_states_desired, state_number, skill_to_run_full, state_def, next_states)
+
+            previous_skill_full = previous_skill
+        else:
+            previous_state_number = state_number
+            previous_skill = skill_to_run
+            previous_skill_full = skill_to_run_full
+
+
 if __name__ == '__main__':
     # Extension, lift, yaw
-    dmp_opts = json_load_wrapper("/home/adam/repos/synthesis_based_repair/data/stretch/stretch_dmp_opts.json")
-    folder_dmps = "/home/adam/repos/synthesis_based_repair/data/dmps/"
-    try:
-        parser = ap.ArgumentParser(description='Handover an object.')
-        args, unknown = parser.parse_known_args()
-        node = StretchSkill()
 
-        # Find where the robot is, where it should pickup the block, and how it should get between them
-        if IS_SIM:
-            unit_box_pose = node.findPose(OBJ_NAME)
-            base_link = node.findPose(STRETCH_FRAME)
-            start_pose = np.array([base_link.translation.x, base_link.translation.y, 0, -10, -10, -10])
-            end_pose = findObjectPickupPose(unit_box_pose, OBJ_NAME)
-            jv = node.getJointValues()
-            start_pose = addJointValuesToPose(start_pose, jv)
-            end_pose = addJointValuesToPose(end_pose, jv)
+    if IS_SIM:
+        main()
 
-            rospy.loginfo("Start pose: {}".format(start_pose))
-            rospy.loginfo("End pose: {}".format(end_pose))
+    if not IS_SIM:
+        # Retracts arm all the way, lifts, extends, and lifts a little more
 
-            node.openGripper()
-            rospy.loginfo("Moving to box")
-            stretch_base_traj = findTrajectoryFromDMP(start_pose, end_pose, 'skillStretch3to1', folder_dmps, dmp_opts)
-            # stretch_base_traj = np.ones([10, 6]) * -10
-            # stretch_base_traj[:, 0] = np.linspace(0, 4, 10)
-            # stretch_base_traj[:, 1] = np.linspace(0, 2, 10)
-            node.followTrajectory(stretch_base_traj)
+        rospy.loginfo("Retracting arm")
+        stretch_arm_retract = np.array([0, -10, -10])
+        node.moveArm(stretch_arm_retract)
 
-            # correct final pose
-            node.rotateToTheta(end_pose[2])
-
-            rospy.loginfo("Retracting arm")
-            stretch_arm_retract = np.array([0, -10, -10])
-            node.moveArm(stretch_arm_retract)
-
-            unit_box_pose = node.findPose(OBJ_NAME)
-            # TODO: Change the 0.03 to the correct value/find it from the robot URDF
-            amount_to_lift = (unit_box_pose.translation.z)-.03
-            rospy.loginfo("Lifting arm to: {}".format(amount_to_lift))
-            stretch_arm_raise = np.array([0, amount_to_lift, 0])
-            node.moveArm(stretch_arm_raise)
-            node.openGripper()
+        unit_box_pose = node.findPose(OBJ_NAME)
+        # TODO: Change the 0.03 to the correct value/find it from the robot URDF
+        amount_to_lift = (unit_box_pose.translation.z)-.03
+        rospy.loginfo("Lifting arm to: {}".format(amount_to_lift))
+        stretch_arm_raise = np.array([0, amount_to_lift, 0])
+        node.moveArm(stretch_arm_raise)
 
 
-            base_link = node.findPose(STRETCH_FRAME)
-            # Reduce extension by the default gripper extension (0.34) and the offset of the gazebo box (0.04)
-            # TODO check these values on real robot/find from URDF
-            amount_to_extend = (unit_box_pose.translation.y - base_link.translation.y) - (0.34 + 0.02)
-            rospy.loginfo("Extending arm to: {}".format(amount_to_extend))
-            stretch_extend = np.array([ amount_to_extend, -10, -10])
-            node.moveArm(stretch_extend)
-            # ee_left = node.findPose('robot::link_gripper_finger_left')
-            # rospy.loginfo("Stretch left finger after: {}".format(ee_left))
+        base_link = node.findPose(STRETCH_FRAME)
+        # Reduce extension by the default gripper extension (0.34) and the offset of the gazebo box (0.04)
+        # TODO check these values on real robot/find from URDF
+        amount_to_extend, wrist_theta = findArmExtensionAndRotation(unit_box_pose, base_link)
+        # amount_to_extend = (unit_box_pose.translation.y - base_link.translation.y) - (0.34 + 0.02)
+        rospy.loginfo("Extending arm to: {}. Rotating wrist to: {}".format(amount_to_extend, wrist_theta))
+        stretch_extend = np.array([ amount_to_extend, -10, wrist_theta])
+        node.moveArm(stretch_extend)
+        # ee_left = node.findPose('robot::link_gripper_finger_left')
+        # rospy.loginfo("Stretch left finger after: {}".format(ee_left))
 
-            # node.closeGripper()
-            node.attachObject('box_1')
+        node.closeGripper()
 
-            rospy.loginfo("Lifting arm")
-            stretch_lift_with_duck = np.array([-10, amount_to_lift + 0.05, -10])
-            node.moveArm(stretch_lift_with_duck)
-            stretch_retract_with_duck = np.array([0, -10, -10])
-            node.moveArm(stretch_retract_with_duck)
-
-            node.detachObject('box_1')
-
-
-        if not IS_SIM:
-            # Retracts arm all the way, lifts, extends, and lifts a little more
-
-            rospy.loginfo("Retracting arm")
-            stretch_arm_retract = np.array([0, -10, -10])
-            node.moveArm(stretch_arm_retract)
-
-            unit_box_pose = node.findPose(OBJ_NAME)
-            # TODO: Change the 0.03 to the correct value/find it from the robot URDF
-            amount_to_lift = (unit_box_pose.translation.z)-.03
-            rospy.loginfo("Lifting arm to: {}".format(amount_to_lift))
-            stretch_arm_raise = np.array([0, amount_to_lift, 0])
-            node.moveArm(stretch_arm_raise)
-
-
-            base_link = node.findPose(STRETCH_FRAME)
-            # Reduce extension by the default gripper extension (0.34) and the offset of the gazebo box (0.04)
-            # TODO check these values on real robot/find from URDF
-            amount_to_extend, wrist_theta = findArmExtensionAndRotation(unit_box_pose, base_link)
-            # amount_to_extend = (unit_box_pose.translation.y - base_link.translation.y) - (0.34 + 0.02)
-            rospy.loginfo("Extending arm to: {}. Rotating wrist to: {}".format(amount_to_extend, wrist_theta))
-            stretch_extend = np.array([ amount_to_extend, -10, wrist_theta])
-            node.moveArm(stretch_extend)
-            # ee_left = node.findPose('robot::link_gripper_finger_left')
-            # rospy.loginfo("Stretch left finger after: {}".format(ee_left))
-
-            node.closeGripper()
-
-            rospy.loginfo("Lifting arm")
-            stretch_lift_with_duck = np.array([-10, amount_to_lift + 0.07, -10])
-            node.moveArm(stretch_lift_with_duck)
-
-    except KeyboardInterrupt:
-        rospy.loginfo('interrupt received, so shutting down')
+        rospy.loginfo("Lifting arm")
+        stretch_lift_with_duck = np.array([-10, amount_to_lift + 0.07, -10])
+        node.moveArm(stretch_lift_with_duck)
