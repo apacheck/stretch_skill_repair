@@ -375,11 +375,13 @@ class StretchSkill(hm.HelloNode):
 
         return True
 
-    def run_skill(self, skill_name, inp_state, inp_robot, sym_state, skills, dmp_folder, opts):
+
+    def run_skill(self, skill_name, inp_state, inp_robot, sym_state, skills, symbols, dmp_folder, opts):
         base_skill = skill_name.split("_")[0]
-        end_robot = skills[skill_name].get_final_robot_pose()
+        end_robot = skills[skill_name].get_final_robot_pose(inp_state, symbols)
+        print("Goal robot pose: {}".format(end_robot))
         split_skill_name = skill_name.split("_")[0]
-        traj = findTrajectoryFromDMP(inp_state, end_robot, split_skill_name, dmp_folder, opts)
+        traj = findTrajectoryFromDMP(inp_robot, end_robot, split_skill_name, dmp_folder, opts)
 
         if base_skill in ['skillStretch3to1', 'skillStretch1to2', 'skillStretch2to3']:
             intermediate_states = self.followTrajectory(traj)
@@ -507,14 +509,6 @@ def plotTrajectory(arg_trajectory):
 
 
 def main():
-    node = StretchSkill()
-    print(node.getJointValues())
-    node.setEEFrame(EE_FRAME)
-    node.setStretchFrame(STRETCH_FRAME)
-    node.setOriginFrame(ORIGIN_FRAME)
-    node.setDuck1Frame(DUCK1_FRAME)
-    node.setDuck2Frame(DUCK2_FRAME)
-    node.moveArm(np.array([0.7, -10, -10]))
 
     # Arguments/variables
     parser = argparse.ArgumentParser()
@@ -522,6 +516,15 @@ def main():
     parser.add_argument("--sym_opts", help="Opts involving spec writing and repair", required=True)
     parser.add_argument("--dmp_opts", help="Opts involving plotting, repair, dmps", required=True)
     args = parser.parse_args()
+
+    node = StretchSkill()
+    # print(node.getJointValues())
+    node.setEEFrame(EE_FRAME)
+    node.setStretchFrame(STRETCH_FRAME)
+    node.setOriginFrame(ORIGIN_FRAME)
+    node.setDuck1Frame(DUCK1_FRAME)
+    node.setDuck2Frame(DUCK2_FRAME)
+    node.moveArm(np.array([0.7, 0.85, -10]))
 
     file_names = json_load_wrapper(args.file_names)
     sym_opts = json_load_wrapper(args.sym_opts)
@@ -545,7 +548,7 @@ def main():
 
     while not rospy.is_shutdown():
         world_state = node.getWorldState()
-        print(node.getJointValues())
+        # print(node.getJointValues())
         rospy.loginfo("Current state: {}".format(world_state))
         syms_true = find_symbols(world_state, symbols)
         rospy.loginfo("Symbols true: {}".format(syms_true))
@@ -556,7 +559,7 @@ def main():
 
         if skill_to_run != " ":
             robot_state = node.getRobotState()
-            intermediate_states = node.run_skill(skill_to_run, world_state, robot_state, syms_true, symbols, dmp_folder, dmp_opts)
+            intermediate_states = node.run_skill(skill_to_run, world_state, robot_state, syms_true, skills, symbols, dmp_folder, dmp_opts)
 
             intermediate_states_desired = find_intermediate_symbols(intermediate_states, symbols)
 
