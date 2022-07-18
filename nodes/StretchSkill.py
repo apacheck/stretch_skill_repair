@@ -545,6 +545,7 @@ def main():
 
     while not rospy.is_shutdown():
         world_state = node.getWorldState()
+        print(node.getJointValues())
         rospy.loginfo("Current state: {}".format(world_state))
         syms_true = find_symbols(world_state, symbols)
         rospy.loginfo("Symbols true: {}".format(syms_true))
