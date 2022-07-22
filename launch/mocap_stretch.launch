@@ -3,4 +3,6 @@
 <include file="$(find mocap_optitrack)/launch/mocap.launch"/>
 
   <node pkg="tf2_ros" type="static_transform_publisher" name="origin_fixer" args="0 0 0 -1.57 1.57 0 optitrack_origin origin" />
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="stretch_base_fixer" args="0 0 0 0 0 1.57 stretch base_link" />
 </launch>

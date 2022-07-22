@@ -14,8 +14,6 @@ import numpy as np
 from math import dist
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
-IS_SIM = False
-
 def feedbackLin(arg_cmd_vx, arg_cmd_vy, arg_theta, arg_epsilon):
     """ Performs feedback linearization
     """
@@ -45,11 +43,7 @@ def findCommands(arg_cur_pose, arg_desired_pose):
     """
     cmd_vx = arg_desired_pose[0] - arg_cur_pose.translation.x
     cmd_vy = arg_desired_pose[1] - arg_cur_pose.translation.y
-    q1 = arg_cur_pose.rotation.x
-    q2 = arg_cur_pose.rotation.y
-    q3 = arg_cur_pose.rotation.z
-    q0 = arg_cur_pose.rotation.w
-    theta = np.arctan2(2 * (q1 * q2 + q0 * q3), q0 ** 2 + q1 ** 2 - q2 ** 2 - q3 **2)
+    theta = findTheta(arg_cur_pose)
     return cmd_vx, cmd_vy, theta
 
 def findTheta(arg_cur_pose):

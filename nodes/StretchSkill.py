@@ -59,7 +59,7 @@ DEVICE="cpu"
 
 # import stretch_funmap.navigate as nv
 
-IS_SIM = True
+IS_SIM = False
 if IS_SIM:
     TELEPORT=True
     ORIGIN_FRAME = 'odom'
@@ -72,16 +72,23 @@ if IS_SIM:
     DO_MOVE_GRIPPER = True
     OBJ_NAME = 'duck_1::body'
 else:
+    TELEPORT = False
     ORIGIN_FRAME = 'origin'
     STRETCH_FRAME = 'stretch'
+    EE_FRAME = 'link_gripper_fingertip_left'
     CMD_VEL_TOPIC = '/stretch/cmd_vel'
-    DO_THETA_CORRECTION = False
+    DO_THETA_CORRECTION = True
     DO_MOVE_GRIPPER = True
-    OBJ_NAME = 'Duck'
+    DUCK1_FRAME = 'DuckA'
+    DUCK2_FRAME = 'DuckB'
 
 class StretchSkill(hm.HelloNode):
     def __init__(self):
         rospy.loginfo("Creating stretch skill")
+        self.lift_position = None
+        self.joint_states = None
+        self.wrist_position = None
+        self.wrist_yaw = None
         if IS_SIM:
             moveit_commander.roscpp_initialize(sys.argv)
             rospy.init_node('controller', anonymous=True)
@@ -97,21 +104,17 @@ class StretchSkill(hm.HelloNode):
         else:
             hm.HelloNode.__init__(self)
             hm.HelloNode.main(self, 'stretch_control', 'stretch_skill_repair', wait_for_first_pointcloud=False)
+            self.joint_states_lock = threading.Lock()
+            self.move_lock = threading.Lock()
+            with self.move_lock:
+                self.handover_goal_ready = False
+            self.joint_states_subscriber = rospy.Subscriber('/stretch/joint_states', JointState, self.joint_states_callback)
         self.rate = rospy.Rate(20.0)
-        self.joint_states = None
 
         # For use with mobile base control
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
         self.vel_pub = rospy.Publisher(CMD_VEL_TOPIC, Twist, queue_size=10)
-
-        if not IS_SIM:
-            self.joint_states_lock = threading.Lock()
-
-            self.move_lock = threading.Lock()
-
-            with self.move_lock:
-                self.handover_goal_ready = False
 
     def setStretchFrame(self, stretch_frame):
         self.stretch_frame = stretch_frame
@@ -153,6 +156,16 @@ class StretchSkill(hm.HelloNode):
         state[0, 11] = duck2.translation.z
 
         return state
+
+    def joint_states_callback(self, joint_states):
+        with self.joint_states_lock:
+            self.joint_states = joint_states
+        wrist_position, wrist_velocity, wrist_effort = hm.get_wrist_state(joint_states)
+        self.wrist_position = wrist_position
+        lift_position, lift_velocity, lift_effort = hm.get_lift_state(joint_states)
+        self.lift_position = lift_position
+        wrist_yaw_position, wrist_yaw_velocity, wrist_yaw_effort = get_wrist_yaw_state(joint_states)
+        self.wrist_yaw_position = wrist_yaw_position
 
     def openGripper(self, obj_name=None):
         if DO_MOVE_GRIPPER:
@@ -241,9 +254,9 @@ class StretchSkill(hm.HelloNode):
         if IS_SIM:
             move_group_arm = moveit_commander.MoveGroupCommander("stretch_arm")
             joint_values = move_group_arm.get_current_joint_values()
+            return np.array([np.sum(joint_values[1:5]), joint_values[0], joint_values[5]])
         else:
-            rospy.loginfo("Not implemented")
-        return np.array([np.sum(joint_values[1:5]), joint_values[0], joint_values[5]])
+            return np.array([self.wrist_position, self.lift_position, self.wrist_yaw_position])
 
     def followTrajectory(self, data, teleport=TELEPORT):
         # Data should be a numpy array with x, y, theta, wrist_extension, z, wrist_theta
@@ -295,7 +308,7 @@ class StretchSkill(hm.HelloNode):
 
         return True
 
-    def visitWaypoint(self, waypoint_xytheta, arg_close_enough=0.03, arg_epsilon=0.1, arg_maxV=2, arg_wheel2center=0.1778, teleport=TELEPORT):
+    def visitWaypoint(self, waypoint_xytheta, arg_close_enough=0.1, arg_epsilon=0.1, arg_maxV=0.1, arg_wheel2center=0.1778, teleport=TELEPORT):
         rospy.loginfo("{} base to: x: {:.2f}, y: {:.2f}, theta: {:.2f}".format("Teleporting" if teleport else "Moving", waypoint_xytheta[0], waypoint_xytheta[1], waypoint_xytheta[2]))
 
         if teleport:
@@ -306,28 +319,28 @@ class StretchSkill(hm.HelloNode):
         at_waypoint = False
         while not at_waypoint:
             trans_stretch = self.findPose(STRETCH_FRAME)
-
+            theta = findTheta(trans_stretch)
             dist_to_waypoint = np.sqrt([np.square(waypoint_xytheta[0] - trans_stretch.translation.x) +
-                                        np.square(waypoint_xytheta[1] - trans_stretch.translation.y)])
-            # rospy.loginfo("Distance to waypoint: {}".format(dist_to_waypoint))
+                                        np.square(waypoint_xytheta[1] - trans_stretch.translation.y)])[0]
+            rospy.loginfo("Robot is at: x: {:.3f}, y: {:.3f}, theta: {:.3f}, error: {:.3f}".format(trans_stretch.translation.x, trans_stretch.translation.y, theta, dist_to_waypoint))
 
             if dist_to_waypoint < arg_close_enough:
-                at_waypoint = True
+                return True
 
             if not at_waypoint:
                 cmd_vx, cmd_vy, theta = findCommands(trans_stretch, waypoint_xytheta)
-                print("cmd_vx: {} cmd_vy: {}".format(cmd_vx, cmd_vy))
-                cmd_v, cmd_w = feedbackLin(cmd_vx, cmd_vy, theta, arg_epsilon)
-                # cmd_v, cmd_w = thresholdVel(cmd_v, cmd_w, maxV, wheel2center)
-                # _, cmd_v, cmd_w = calc_control_command(cmd_vx, cmd_vy, theta, epsilon)
 
-                rospy.loginfo("Robot is at: x: {:.3f}, y: {:.3f}, theta: {:.3f}".format(trans_stretch.translation.x, trans_stretch.translation.y, theta))
-                rospy.loginfo("cmd_v: {} cmd_w: {}".format(cmd_v, cmd_w))
+                # print("cmd_vx: {} cmd_vy: {}".format(cmd_vx, cmd_vy))
+                cmd_v, cmd_w = feedbackLin(cmd_vx, cmd_vy, theta, arg_epsilon)
+                # rospy.loginfo("cmd_v: {} cmd_w: {}".format(cmd_v, cmd_w))
+                cmd_v, cmd_w = thresholdVel(cmd_v, cmd_w, arg_maxV, arg_wheel2center)
+                # rospy.loginfo("cmd_v: {} cmd_w: {} thresholded".format(cmd_v, cmd_w))
+                # _, cmd_v, cmd_w = calc_control_command(cmd_vx, cmd_vy, theta, epsilon)
 
                 vel_msg = Twist()
                 vel_msg.linear.x = cmd_v
                 vel_msg.angular.z = cmd_w
-                # self.vel_pub.publish(vel_msg)
+                self.vel_pub.publish(vel_msg)
                 self.rate.sleep()
 
         return True
@@ -504,6 +517,15 @@ def plotTrajectory(arg_trajectory):
     pass
 
 
+def get_wrist_yaw_state(joint_states):
+    joint_name = 'joint_wrist_yaw'
+    i = joint_states.name.index(joint_name)
+    wrist_yaw_position = joint_states.position[i]
+    wrist_yaw_velocity = joint_states.velocity[i]
+    wrist_yaw_effort = joint_states.effort[i]
+    return [wrist_yaw_position, wrist_yaw_velocity, wrist_yaw_effort]
+
+
 def main():
 
     # Arguments/variables
@@ -577,6 +599,136 @@ def main():
             previous_skill_full = skill_to_run_full
 
 
+def testSkillReal():
+
+    # Arguments/variables
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file_names", help="File names", required=True)
+    parser.add_argument("--sym_opts", help="Opts involving spec writing and repair", required=True)
+    parser.add_argument("--dmp_opts", help="Opts involving plotting, repair, dmps", required=True)
+    args = parser.parse_args()
+
+    node = StretchSkill()
+    # print(node.getJointValues())
+    node.setEEFrame(EE_FRAME)
+    node.setStretchFrame(STRETCH_FRAME)
+    node.setOriginFrame(ORIGIN_FRAME)
+    node.setDuck1Frame(DUCK1_FRAME)
+    node.setDuck2Frame(DUCK2_FRAME)
+    node.moveArm(np.array([0, 0.85, 0]))
+    node.followTrajectory(np.array([[0.52, 0.5, 3.1415, -10, -10, -10]]))
+    node.rotateToTheta(3.1415)
+    node.moveArm(np.array([0.4, 0.85+0.01*np.random.random(1)[0], -10]))
+    rospy.sleep(2)
+
+    file_names = json_load_wrapper(args.file_names)
+    sym_opts = json_load_wrapper(args.sym_opts)
+    dmp_opts = json_load_wrapper(args.dmp_opts)
+
+    symbols = load_symbols("/home/adam/repos/synthesis_based_repair/data/stretch/stretch_symbols.json")
+    skills = load_skills_from_json("/home/adam/repos/synthesis_based_repair/data/stretch/stretch_skills.json")
+    workspace_bnds = np.array(dmp_opts["workspace_bnds"])
+    dmp_folder = "/home/adam/repos/synthesis_based_repair/data/dmps/"
+    file_structured_slugs = "/home/adam/repos/synthesis_based_repair/data/stretch/stretch.structuredslugs"
+    file_aut = "/home/adam/repos/synthesis_based_repair/data/stretch/stretch_strategy.aut"
+
+    inp_robot = node.getRobotState()
+    end_robot = np.array([-1.5, 0, 4.71, .57, .84, 0])
+    traj = findTrajectoryFromDMP(inp_robot, end_robot, 'skillStretch1to2', dmp_folder, dmp_opts)
+    istates = node.followTrajectory(traj)
+    print("Intermediate state", istates)
+
+    inp_robot = node.getRobotState()
+    end_robot = np.array([0.5, -0.48, 6.28, 0.57, 0.84, 0])
+    traj = findTrajectoryFromDMP(inp_robot, end_robot, 'skillStretch2to3', dmp_folder, dmp_opts)
+    istates = node.followTrajectory(traj)
+    print("Intermediate state", istates)
+
+    inp_robot = node.getRobotState()
+    if inp_robot[0, 2] > 6:
+        inp_robot[0, 2] -= 2*np.pi
+    end_robot = np.array([0.5, 0.52, 3.14, 0.57, 0.84, 0])
+    traj = findTrajectoryFromDMP(inp_robot, end_robot, 'skillStretch3to1', dmp_folder, dmp_opts)
+    istates = node.followTrajectory(traj)
+    print("Intermediate state", istates)
+
+
+def runStrategyReal():
+
+    # Arguments/variables
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file_names", help="File names", required=True)
+    parser.add_argument("--sym_opts", help="Opts involving spec writing and repair", required=True)
+    parser.add_argument("--dmp_opts", help="Opts involving plotting, repair, dmps", required=True)
+    args = parser.parse_args()
+
+    node = StretchSkill()
+    # print(node.getJointValues())
+    node.setEEFrame(EE_FRAME)
+    node.setStretchFrame(STRETCH_FRAME)
+    node.setOriginFrame(ORIGIN_FRAME)
+    node.setDuck1Frame(DUCK1_FRAME)
+    node.setDuck2Frame(DUCK2_FRAME)
+    node.moveArm(np.array([0, 0.85, 0]))
+    node.followTrajectory(np.array([[0.52, 0.5, 3.1415, -10, -10, -10]]))
+    node.rotateToTheta(3.1415)
+    rospy.sleep(2)
+    node.moveArm(np.array([0.5, 0.85+0.01*np.random.random(1)[0], -10]))
+    rospy.sleep(2)
+
+    rospy.loginfo("Beginning strategy execution")
+
+    file_names = json_load_wrapper(args.file_names)
+    sym_opts = json_load_wrapper(args.sym_opts)
+    dmp_opts = json_load_wrapper(args.dmp_opts)
+
+    symbols = load_symbols("/home/adam/repos/synthesis_based_repair/data/stretch/stretch_symbols.json")
+    skills = load_skills_from_json("/home/adam/repos/synthesis_based_repair/data/stretch/stretch_skills.json")
+    workspace_bnds = np.array(dmp_opts["workspace_bnds"])
+    dmp_folder = "/home/adam/repos/synthesis_based_repair/data/dmps/"
+    file_structured_slugs = "/home/adam/repos/synthesis_based_repair/data/stretch/stretch.structuredslugs"
+    file_aut = "/home/adam/repos/synthesis_based_repair/data/stretch/stretch_strategy.aut"
+
+    # Load in specification
+    state_variables, action_variables = parse_spec(file_structured_slugs)
+    state_def, next_states, rank_def = parse_aut(file_aut, state_variables, action_variables)
+
+    # Find initial state
+    # previous_state_number = '4'
+    # previous_skill_full = 'skillStretch1to2_a_1_b_2'
+    previous_state_number = '0'
+    previous_skill_full = ' '
+    previous_skill = previous_skill_full
+
+    while not rospy.is_shutdown():
+        world_state = node.getWorldState()
+        # print(node.getJointValues())
+        rospy.loginfo("Current state: {}".format(world_state))
+        syms_true = find_symbols(world_state, symbols)
+        rospy.loginfo("Symbols true: {}".format(syms_true))
+        state_number = find_state_number(state_def, next_states, previous_state_number, previous_skill_full, syms_true)
+        skill_to_run_full = find_skill_to_run(next_states, state_number)
+        skill_to_run = skill_to_run_full
+        rospy.loginfo("Executing skill: {}".format(skill_to_run))
+
+        if skill_to_run != " ":
+            robot_state = node.getRobotState()
+            intermediate_states = node.run_skill(skill_to_run, world_state, robot_state, syms_true, skills, symbols, dmp_folder, dmp_opts)
+
+            intermediate_states_desired = find_intermediate_symbols(intermediate_states, symbols)
+            rospy.loginfo("Intermediate states visited: ")
+            for i_state in intermediate_states_desired:
+                rospy.loginfo(i_state)
+
+            previous_state_number, previous_skill = update_state(intermediate_states_desired, state_number, skill_to_run_full, state_def, next_states)
+
+            previous_skill_full = previous_skill
+        else:
+            previous_state_number = state_number
+            previous_skill = skill_to_run
+            previous_skill_full = skill_to_run_full
+
+
 if __name__ == '__main__':
     # Extension, lift, yaw
 
@@ -584,18 +736,22 @@ if __name__ == '__main__':
         main()
 
     if not IS_SIM:
-        # Retracts arm all the way, lifts, extends, and lifts a little more
         rospy.loginfo("This is running on the real stretch")
         node = StretchSkill()
-        node.setStretchFrame(STRETCH_FRAME)
-        node.setOriginFrame(ORIGIN_FRAME)
-
-        pose = node.findPose('stretch')
-        print(pose)
-
-        traj = -10 * np.ones([10, 6])
-        traj[:, 0] = np.linspace(0.5, 2, 10)
-        traj[:, 1] = 0
-        traj[:, 2] = np.pi
-        print(traj)
-        node.followTrajectory(traj)
+        node.moveArm(np.array([0.5, 0.2, 0]))
+        # node.setEEFrame(EE_FRAME)
+        # node.setStretchFrame(STRETCH_FRAME)
+        # node.setOriginFrame(ORIGIN_FRAME)
+        # node.setDuck1Frame(DUCK1_FRAME)
+        # node.setDuck2Frame(DUCK2_FRAME)
+        #
+        # pose = node.findPose('stretch')
+        # print(pose)
+        # rospy.sleep(5)
+        # traj = -10 * np.ones([5, 6])
+        # traj[:, 0] = np.linspace(-2, 2, 5)
+        # traj[:, 1] = 0
+        # traj[:, 2] = np.pi
+        # print(traj)
+        # node.followTrajectory(traj)
+        # runStrategyReal()
