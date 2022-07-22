@@ -50,7 +50,7 @@ from dl2_lfd.nns.dmp_nn import DMPNN
 from dl2_lfd.dmps.dmp import load_dmp_demos, DMP
 import torch
 from dl2_lfd.helper_funcs.conversions import np_to_pgpu
-from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
+# from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 
 
 from StretchHelpers import feedbackLin, thresholdVel, findCommands, findArmExtensionAndRotation, findTheta
@@ -79,7 +79,8 @@ else:
     CMD_VEL_TOPIC = '/stretch/cmd_vel'
     DO_THETA_CORRECTION = True
     DO_MOVE_GRIPPER = True
-    DUCK1_FRAME = 'DuckA'
+    # DUCK1_FRAME = 'DuckA'
+    DUCK1_FRAME = 'Duck'
     DUCK2_FRAME = 'DuckB'
 
 class StretchSkill(hm.HelloNode):
@@ -729,6 +730,76 @@ def runStrategyReal():
             previous_skill_full = skill_to_run_full
 
 
+def findArmExtensionAndRotation(goal_pose, robot_pose_x, robot_pose_y, robot_theta):
+    """ Finds the amount to extend the arm and rotate the wrist to reach a goal point
+    """
+    GtoW = 0.23 #Grip to Wrist Distance
+
+    xd = goal_pose.translation.x
+    yd = goal_pose.translation.y
+
+    xr = robot_pose_x
+    yr = robot_pose_y
+    qrobot = robot_theta
+
+    if robot_theta < 0:
+        robot_theta = robot_theta + (2*np.pi)
+    elif robot_theta > (2*np.pi):
+        robot_theta = robot_theta - (2*np.pi)
+
+    if ((robot_theta % (2*np.pi)) < 0.0001): # or ((robot_theta-np.pi % (2*np.pi)) < 0.0001):
+        raise Exception("Cannot perform task with this robot_theta")
+
+
+    q_arm = qrobot - (np.pi)/2 #Robot arm theta
+
+    p = yr - (xr*np.tan(q_arm)) - yd
+
+    #Solving quadratic equation
+    a = 1 + (np.tan(q_arm)**2)
+    b = (-2*xd) + (2*p*np.tan(q_arm))
+    c = xd**2 + p**2 - GtoW**2
+
+    # Discriminant
+    d = (b**2) - (4*a*c)
+
+    # X values
+    x1 = (-b + np.sqrt(d))/(2*a)
+    x2 = (-b - np.sqrt(d))/(2*a)
+
+    y1 = (np.tan(q_arm) * x1) + yr - (xr*np.tan(q_arm))
+    y2 = (np.tan(q_arm) * x2) + yr - (xr*np.tan(q_arm))
+
+    pt1 = (x1, y1)
+    pt2 = (x2, y2)
+    robot = (xr, yr)
+
+    dist1 = dist(pt1, robot)
+    dist2 = dist(pt2, robot)
+
+    if dist1<dist2:
+        amount_to_extend = dist1
+    else:
+         amount_to_extend = dist2
+
+    if amount_to_extend == dist1:
+        x_pt = pt1[0]
+        y_pt = pt1[1]
+    else:
+        x_pt = pt2[0]
+        y_pt = pt2[1]
+
+    angle = np.arctan2(yd - y_pt, xd - x_pt)
+    wrist_theta = angle - q_arm
+
+    if wrist_theta >= 2*np.pi:
+        wrist_theta = wrist_theta - (2*np.pi)
+    elif wrist_theta < -0.1:
+        wrist_theta = wrist_theta + (2*np.pi)
+
+    return amount_to_extend, wrist_theta
+
+
 def testReachCorrection():
     """ To test the reach correction on the stretch
     """
@@ -747,8 +818,8 @@ def testReachCorrection():
     robot_pose = node.getPose(STRETCH_FRAME)
     robot_theta =  findTheta(robot_pose)
     # Shashank find these offsets
-    offset_x = 0
-    offset_y = 0
+    offset_x = 0.13
+    offset_y = 0.05
     extension, wrist_theta = findArmExtensionAndRotation(duck1_pose, robot_pose.translation.x + offset_x * np.cos(robot_theta), robot_pose.translation.y + offset_y * np.sin(robot_theta), robot_theta)
     node.moveArm(np.array([extension, -10, wrist_theta]))
 
