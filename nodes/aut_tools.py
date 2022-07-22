@@ -152,7 +152,6 @@ def update_state(arg_intermediate_states, arg_state_number, arg_skill_to_run, ar
             previous_skill_out = arg_skill_to_run
 
     print("After updating the state we are at: {}".format(state_number_out))
-    print("But wait ... is there a bonus update?")
     # previous_skill_out = arg_next_states[state_number_out][0]
     if arg_next_states[state_number_out][0] == arg_skill_to_run:
         print("There is! We assume this is due to the limitations of abstraction and the last state is really visited twice.")
@@ -234,9 +233,15 @@ def find_state_number(state_def, next_states, previous_state_number, previous_sk
     valid_next_state_numbers = valid_next_states_from_previous[1]
     print("valid next states from previous: {}".format(valid_next_state_numbers))
     # print("symbols true that we try to match: {}".format(symbols_true))
+
+    # print("Previous symbols: {}".format(state_def[previous_state_number]))
+    # if set(symbols_true) == set(state_def[previous_state_number]):
+    #     print("State stayed the same")
+    #     return previous_state_number
+
     for possible_state in valid_next_state_numbers:
         possible_state_symbols_true = state_def[possible_state]
-        print("possible state: {} possible symbols true {}".format(possible_state, possible_state_symbols_true))
+        print("possible state: {} - with symbols true {}".format(possible_state, possible_state_symbols_true))
         if set(possible_state_symbols_true) == set(symbols_true):
             state_number.append(possible_state)
 

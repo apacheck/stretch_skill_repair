@@ -12,6 +12,9 @@ reaches, the theta given the quaternion, etc
 from geometry_msgs.msg import Transform
 import numpy as np
 from math import dist
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
+
+IS_SIM = False
 
 def feedbackLin(arg_cmd_vx, arg_cmd_vy, arg_theta, arg_epsilon):
     """ Performs feedback linearization
@@ -47,8 +50,6 @@ def findCommands(arg_cur_pose, arg_desired_pose):
     q3 = arg_cur_pose.rotation.z
     q0 = arg_cur_pose.rotation.w
     theta = np.arctan2(2 * (q1 * q2 + q0 * q3), q0 ** 2 + q1 ** 2 - q2 ** 2 - q3 **2)
-    if not IS_SIM:
-        theta -= np.pi
     return cmd_vx, cmd_vy, theta
 
 def findTheta(arg_cur_pose):
@@ -66,32 +67,16 @@ def findTheta(arg_cur_pose):
     q3 = arg_cur_pose.rotation.z
     q0 = arg_cur_pose.rotation.w
     # theta = np.arctan2(2 * (q1 * q2 + q0 * q3), q0 ** 2 + q1 ** 2 - q2 ** 2 - q3 **2)
-    theta = np.arctan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3))
+    # theta = np.arctan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3))
+    (_, _, theta) = euler_from_quaternion([q1, q2, q3, q0])
     # if not IS_SIM:
-        # theta -= np.pi
+    #     theta -= np.pi
+    while theta < -np.pi/4 or theta >= 2*np.pi-np.pi/4:
+        if theta < -np.pi/4:
+            theta += 2*np.pi
+        if theta >= 2*np.pi-np.pi/4:
+            theta -= 2*np.pi
     return theta
-
-
-def eulerToQuaternion(yaw, pitch, roll):
-    """Given the yaw, pitch, and roll, finds the transform
-
-    Note: this returns the full transform, including the translation, which is 0
-    """
-    cy = np.cos(yaw * 0.5)
-    sy = np.sin(yaw * 0.5)
-    cp = np.cos(pitch * 0.5)
-    sp = np.sin(pitch * 0.5)
-    cr = np.cos(roll * 0.5)
-    sr = np.sin(roll * 0.5)
-
-    q = Transform()
-    q.rotation.w = cr * cp * cy + sr * sp * sy
-    q.rotation.x = sr * cp * cy - cr * sp * sy
-    q.rotation.y = cr * sp * cy + sr * cp * sy
-    q.rotation.z = cr * cp * sy - sr * sp * cy
-
-    return q
-
 
 def findArmExtensionAndRotation(goal_pose, robot_pose_x, robot_pose_y, robot_theta):
     """ Finds the amount to extend the arm and rotate the wrist to reach a goal point
