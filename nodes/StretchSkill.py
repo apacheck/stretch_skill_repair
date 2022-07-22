@@ -729,6 +729,30 @@ def runStrategyReal():
             previous_skill_full = skill_to_run_full
 
 
+def testReachCorrection():
+    """ To test the reach correction on the stretch
+    """
+    node = StretchSkill()
+    # print(node.getJointValues())
+    node.setEEFrame(EE_FRAME)
+    node.setStretchFrame(STRETCH_FRAME)
+    node.setOriginFrame(ORIGIN_FRAME)
+    node.setDuck1Frame(DUCK1_FRAME)
+    node.setDuck2Frame(DUCK2_FRAME)
+    node.moveArm(np.array([0, 0.85, 0]))
+    # node.followTrajectory(np.array([[0.52, 0.5, 3.1415, -10, -10, -10]]))
+    # node.rotateToTheta(3.1415)
+    rospy.sleep(2)
+    duck1_pose = node.getPose(DUCK1_FRAME)
+    robot_pose = node.getPose(STRETCH_FRAME)
+    robot_theta =  findTheta(robot_pose)
+    # Shashank find these offsets
+    offset_x = 0
+    offset_y = 0
+    extension, wrist_theta = findArmExtensionAndRotation(duck1_pose, robot_pose.translation.x + offset_x * np.cos(robot_theta), robot_pose.translation.y + offset_y * np.sin(robot_theta), robot_theta)
+    node.moveArm(np.array([extension, -10, wrist_theta]))
+
+
 if __name__ == '__main__':
     # Extension, lift, yaw
 
@@ -737,8 +761,9 @@ if __name__ == '__main__':
 
     if not IS_SIM:
         rospy.loginfo("This is running on the real stretch")
-        node = StretchSkill()
-        node.moveArm(np.array([0.5, 0.2, 0]))
+        testReachCorrection()
+        # node = StretchSkill()
+        # node.moveArm(np.array([0.5, 0.2, 0]))
         # node.setEEFrame(EE_FRAME)
         # node.setStretchFrame(STRETCH_FRAME)
         # node.setOriginFrame(ORIGIN_FRAME)
