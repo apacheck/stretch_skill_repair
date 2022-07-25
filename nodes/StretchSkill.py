@@ -792,11 +792,6 @@ def findArmExtensionAndRotation(goal_pose, robot_pose_x, robot_pose_y, robot_the
     angle = np.arctan2(yd - y_pt, xd - x_pt)
     wrist_theta = angle - q_arm
 
-    if wrist_theta >= 2*np.pi:
-        wrist_theta = wrist_theta - (2*np.pi)
-    elif wrist_theta < -0.1:
-        wrist_theta = wrist_theta + (2*np.pi)
-
     return amount_to_extend, wrist_theta
 
 
@@ -804,25 +799,43 @@ def testReachCorrection():
     """ To test the reach correction on the stretch
     """
     node = StretchSkill()
+    node.openGripper()
     # print(node.getJointValues())
     node.setEEFrame(EE_FRAME)
     node.setStretchFrame(STRETCH_FRAME)
     node.setOriginFrame(ORIGIN_FRAME)
     node.setDuck1Frame(DUCK1_FRAME)
     node.setDuck2Frame(DUCK2_FRAME)
-    node.moveArm(np.array([0, 0.85, 0]))
+    # node.moveArm(np.array([0.0, 0.8, 0]))
     # node.followTrajectory(np.array([[0.52, 0.5, 3.1415, -10, -10, -10]]))
     # node.rotateToTheta(3.1415)
     rospy.sleep(2)
-    duck1_pose = node.getPose(DUCK1_FRAME)
-    robot_pose = node.getPose(STRETCH_FRAME)
+    duck1_pose = node.findPose(DUCK1_FRAME)
+    robot_pose = node.findPose(STRETCH_FRAME)
     robot_theta =  findTheta(robot_pose)
     # Shashank find these offsets
-    offset_x = 0.13
-    offset_y = 0.05
-    extension, wrist_theta = findArmExtensionAndRotation(duck1_pose, robot_pose.translation.x + offset_x * np.cos(robot_theta), robot_pose.translation.y + offset_y * np.sin(robot_theta), robot_theta)
-    node.moveArm(np.array([extension, -10, wrist_theta]))
+    offset_x = 0.1 - 0.045
+    offset_y = -0.15 - 0.005
+    A = np.array([[np.cos(robot_theta), -np.sin(robot_theta), robot_pose.translation.x],[np.sin(robot_theta), np.cos(robot_theta), robot_pose.translation.y],[0,0,1]])
+    B = np.array([[offset_x], [offset_y], [1]])
+    C = np.matmul(A, B)
 
+    wrist_x = C[0]
+    wrist_y = C[1]
+
+    extension, wrist_theta = findArmExtensionAndRotation(duck1_pose, wrist_x, wrist_y, robot_theta)
+    node.moveArm(np.array([extension, -10, wrist_theta[0]]))
+    rospy.sleep(2)
+    node.moveArm(np.array([-10, duck1_pose.translation.z+0.008, -10]))
+    rospy.sleep(2)
+    node.closeGripper()
+    node.moveArm(np.array([-10, duck1_pose.translation.z+0.008+0.1, -10]))
+    rospy.sleep(2)
+    node.moveArm(np.array([-10, duck1_pose.translation.z+0.008, -10]))
+    node.openGripper()
+    node.moveArm(np.array([-10, 0.8, -10]))
+    rospy.sleep(1)
+    node.moveArm(np.array([0, 0.8, 0]))
 
 if __name__ == '__main__':
     # Extension, lift, yaw
