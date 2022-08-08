@@ -72,6 +72,21 @@ def findTheta(arg_cur_pose):
             theta -= 2*np.pi
     return theta
 
+
+# def ik_stretch(cart_coord):
+#     """Finds the base angle and desired extension for the stretch arm to reach the points
+#     x_base, y_base, x_ee, y_ee, z_ee
+#
+#     """
+#
+#     wrist_x_in_base_frame = 0.14
+#     wrist_y_in_base_frame = -0.16
+#     gripper_length_xy = 0.23
+#     gripper_offset_z = -0.1
+#     base_height_z = 0.05
+
+
+
 def findArmExtensionAndRotation(goal_pose, robot_pose_x, robot_pose_y, robot_theta):
     """ Finds the amount to extend the arm and rotate the wrist to reach a goal point
     """
@@ -138,6 +153,9 @@ def findArmExtensionAndRotation(goal_pose, robot_pose_x, robot_pose_y, robot_the
         wrist_theta = wrist_theta - (2*np.pi)
     elif wrist_theta < -0.1:
         wrist_theta = wrist_theta + (2*np.pi)
+
+    if amount_to_extend >= 0.5:
+        return np.nan, np.nan
 
     return amount_to_extend, wrist_theta
 
