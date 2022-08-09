@@ -292,30 +292,25 @@ class StretchSkill(hm.HelloNode):
             theta = findTheta(trans_stretch)
 
             if cart_traj:
-                robot_theta = theta
                 reset_cnt = 0
                 amount_to_extend = np.nan
-                while np.isnan(amount_to_extend):
+                test_theta_array = np.linspace(0, 2 * np.pi, 1000)
+                zeroones = np.empty((1000,))
+                zeroones[::2] = 1
+                zeroones[1::2] = -1
+                test_theta_array = np.multiply(test_theta_array, zeroones)
+                for test_theta_offset in test_theta_array:
+                    robot_theta = theta + test_theta_offset
                     arm_origin_x = d[0] + 0.14 * np.cos(robot_theta) - 0.16 * (- np.sin(robot_theta))
                     arm_origin_y = d[1] + 0.14 * np.sin(robot_theta) - 0.16 * np.cos(robot_theta)
                     goal_pose = Transform()
                     goal_pose.translation.x = d[2]
                     goal_pose.translation.y = d[3]
                     amount_to_extend, wrist_theta = findArmExtensionAndRotation(goal_pose, arm_origin_x, arm_origin_y, robot_theta)
-                    robot_theta += 0.01
-                    if robot_theta > 2 * np.pi:
-                        if reset_cnt == 0:
-                            robot_theta = theta-0.1
-                        elif reset_cnt == 1:
-                            robot_theta = 0
-                            print("resetting robot theta to 0")
-                        else:
-                            robot_theta = theta
-                            amount_to_extend = -10
-                            wrist_theta = -10
-                            print("Temp pass over to see if working")
-                        reset_cnt += 1
+                    if robot_theta < 2 * np.pi and not np.isnan(amount_to_extend):
+                        break
                 if robot_theta != theta:
+                    print("rotate to theta: ", robot_theta)
                     self.rotateToTheta(robot_theta)
                 lift = d[4] - 0.1
                 self.moveArm(np.array([amount_to_extend, lift, wrist_theta]))
@@ -340,14 +335,14 @@ class StretchSkill(hm.HelloNode):
             trans_stretch = self.findPose(STRETCH_FRAME)
             theta = findTheta(trans_stretch)
             cmd_w = arg_goal_theta - theta
-            if cmd_w > np.pi:
+            if cmd_w >= np.pi:
                 cmd_w -= 2 * np.pi
             if cmd_w < -np.pi:
                 cmd_w += 2 * np.pi
             if np.abs(cmd_w) < arg_close_enough:
                 make_theta_correction = False
             else:
-                # rospy.loginfo("cmd_v: {} cmd_w: {}".format(0, cmd_w))
+                rospy.loginfo("rotating to theta cmd_v: {} cmd_w: {}".format(0, cmd_w))
                 vel_msg = Twist()
                 vel_msg.angular.z = cmd_w
                 self.vel_pub.publish(vel_msg)
@@ -356,7 +351,7 @@ class StretchSkill(hm.HelloNode):
         return True
 
     def visitWaypoint(self, waypoint_xytheta, arg_close_enough=0.1, arg_epsilon=0.1, arg_maxV=0.1, arg_wheel2center=0.1778, teleport=TELEPORT):
-        # rospy.loginfo("{} base to: x: {:.2f}, y: {:.2f}, theta: {:.2f}".format("Teleporting" if teleport else "Moving", waypoint_xytheta[0], waypoint_xytheta[1], waypoint_xytheta[2]))
+        rospy.loginfo("{} base to: x: {:.2f}, y: {:.2f}, theta: {:.2f}".format("Teleporting" if teleport else "Moving", waypoint_xytheta[0], waypoint_xytheta[1], waypoint_xytheta[2]))
 
         if teleport:
             self.teleport_base(waypoint_xytheta[0], waypoint_xytheta[1], waypoint_xytheta[2])
@@ -436,6 +431,31 @@ class StretchSkill(hm.HelloNode):
         return True
 
 
+    def find_skill_trajectory(self, skill_name, inp_state, inp_robot, sym_state, skills, symbols, dmp_folder, opts, teleport=TELEPORT):
+        """
+        """
+        # base_skill = skill_name.split("_")[0]
+        base_skill = skill_name
+        end_robot = skills[skill_name].get_final_robot_pose(inp_robot, inp_state, symbols)
+        print("Goal robot pose: {}".format(end_robot))
+        # split_skill_name = skill_name.split("_")[0]
+        traj_cartesian = findTrajectoryFromDMP(inp_robot, end_robot, skill_name, dmp_folder, opts)
+        fig, ax = create_ax_array(2, ncols=1)
+        # plot_limits = np.array([[-2.25, 3], [-2.25, 2.25], [0, 1.25]])
+        plot_limits = np.array([[-2.25, 3], [-2.25, 2.25]])
+        apply_plot_limits(ax[0], plot_limits)
+        trajectories_ee = traj_cartesian[:, 2:]
+        trajectories_base = np.zeros([traj_cartesian.shape[0], 3])
+        trajectories_base[:, :2] = traj_cartesian[:, :2]
+        plot_trajectory(trajectories_ee, ax[0], color='red')
+        plot_trajectory(trajectories_base, ax[0], color='blue')
+        for sym in symbols:
+            symbols[sym].plot(ax[0], dim=2, alpha=0.05)
+
+        plt.savefig('/home/adam/catkin_ws/src/stretch_skill_repair/' + skill_name + ".png")
+
+        return traj_cartesian
+
     def run_skill(self, skill_name, inp_state, inp_robot, sym_state, skills, symbols, dmp_folder, opts, teleport=TELEPORT):
         """
         """
@@ -443,8 +463,8 @@ class StretchSkill(hm.HelloNode):
         base_skill = skill_name
         end_robot = skills[skill_name].get_final_robot_pose(inp_robot, inp_state, symbols)
         print("Goal robot pose: {}".format(end_robot))
-        split_skill_name = skill_name.split("_")[0]
-        traj_cartesian = findTrajectoryFromDMP(inp_robot, end_robot, split_skill_name, dmp_folder, opts)
+        # split_skill_name = skill_name.split("_")[0]
+        traj_cartesian = findTrajectoryFromDMP(inp_robot, end_robot, skill_name, dmp_folder, opts)
         fig, ax = create_ax_array(2, ncols=1)
         # plot_limits = np.array([[-2.25, 3], [-2.25, 2.25], [0, 1.25]])
         plot_limits = np.array([[-2.25, 3], [-2.25, 2.25]])
@@ -652,11 +672,10 @@ def main():
     state_def, next_states, rank_def = parse_aut(file_aut, state_variables, action_variables)
 
     # Find initial state
-    # previous_state_number = '4'
-    # previous_skill_full = 'skillStretch1to2_a_1_b_2'
+    # previous_state_number = '15'
+    # previous_skill = ' '
     previous_state_number = '0'
-    previous_skill_full = ' '
-    previous_skill = previous_skill_full
+    previous_skill = ' '
 
     while not rospy.is_shutdown():
         world_state = node.getWorldState()
@@ -785,11 +804,10 @@ def runStrategyReal():
     state_def, next_states, rank_def = parse_aut(file_aut, state_variables, action_variables)
 
     # Find initial state
-    # previous_state_number = '4'
-    # previous_skill_full = 'skillStretch1to2_a_1_b_2'
+    # previous_state_number = '14'
+    # previous_skill = 'skillStretch2to3b'
     previous_state_number = '0'
-    previous_skill_full = ' '
-    previous_skill = previous_skill_full
+    previous_skill = ' '
 
     while not rospy.is_shutdown():
         world_state = node.getWorldState()
@@ -797,28 +815,36 @@ def runStrategyReal():
         rospy.loginfo("Current state: {}".format(world_state))
         syms_true = find_symbols(world_state, symbols)
         rospy.loginfo("Symbols true: {}".format(syms_true))
-        state_number = find_state_number(state_def, next_states, previous_state_number, previous_skill_full, syms_true)
-        skill_to_run_full = find_skill_to_run(next_states, state_number)
-        skill_to_run = skill_to_run_full
+        state_number = find_state_number(state_def, next_states, previous_state_number, previous_skill, syms_true)
+        skill_to_run = find_skill_to_run(next_states, state_number)
+        # skill_to_run = skill_to_run_full
         rospy.loginfo("Executing skill: {}".format(skill_to_run))
 
         if skill_to_run != " ":
             # robot_state = node.getRobotState()
             robot_state = world_state[0, :5]
-            intermediate_states = node.run_skill(skill_to_run, world_state, robot_state, syms_true, skills, symbols, dmp_folder, dmp_opts)
+            # intermediate_states = node.run_skill(skill_to_run, world_state, robot_state, syms_true, skills, symbols, dmp_folder, dmp_opts)
+            previous_state_number = -1
+            while previous_state_number == -1:
+                traj_cartesian = node.find_skill_trajectory(skill_to_run, world_state, robot_state, syms_true, skills, symbols, dmp_folder, dmp_opts)
+                intermediate_states_symbolic = find_intermediate_symbols(traj_cartesian, symbols)
+                rospy.loginfo("Trajectory would visit: ")
+                for i_state in intermediate_states_symbolic:
+                    rospy.loginfo(i_state)
+                previous_state_number, previous_skill = update_state(intermediate_states_symbolic, state_number, skill_to_run, state_def, next_states)
+                rospy.loginfo("The next state would be: ".format(previous_state_number))
+            intermediate_states = node.followTrajectory(traj_cartesian, teleport=False, cart_traj=True)
 
-            intermediate_states_desired = find_intermediate_symbols(intermediate_states, symbols)
-            rospy.loginfo("Intermediate states visited: ")
-            for i_state in intermediate_states_desired:
-                rospy.loginfo(i_state)
+            # intermediate_states_desired = find_intermediate_symbols(intermediate_states, symbols)
+            # rospy.loginfo("Intermediate states visited: ")
+            # for i_state in intermediate_states_desired:
+            #     rospy.loginfo(i_state)
+            #
+            # previous_state_number, previous_skill = update_state(intermediate_states_desired, state_number, skill_to_run, state_def, next_states)
 
-            previous_state_number, previous_skill = update_state(intermediate_states_desired, state_number, skill_to_run_full, state_def, next_states)
-
-            previous_skill_full = previous_skill
         else:
             previous_state_number = state_number
             previous_skill = skill_to_run
-            previous_skill_full = skill_to_run_full
 
 
 if __name__ == '__main__':
@@ -838,7 +864,7 @@ if __name__ == '__main__':
 
         # pose = node.findPose('stretch')
         # print(pose)
-        node.followTrajectory(np.array([[0.75, 0.5, np.pi, 0.45, 0.8, 0]]))
+        # node.followTrajectory(np.array([[0.75, 0.5, np.pi, 0.45, 0.8, 0]]))
         # node.moveArm(np.array([0.45, 0.8, 0]))
         # rospy.sleep(5)
         # traj = -10 * np.ones([5, 6])

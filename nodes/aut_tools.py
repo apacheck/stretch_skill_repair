@@ -140,11 +140,15 @@ def get_successors(line):
 
 
 def update_state(arg_intermediate_states, arg_state_number, arg_skill_to_run, arg_state_def, arg_next_states):
+    """ Returns -1, "" if the sequence of states violates the strategy
+    """
     state_number_out = arg_state_number
     print("updating intermediate state from state: {}".format(state_number_out))
     for ii in range(len(arg_intermediate_states)-1):
         print("updating intermediate state: previous state: {}, skill we ran: {}, symbols that became true: {}".format(state_number_out, arg_skill_to_run, arg_intermediate_states[ii+1]))
         state_number_out_tmp = find_state_number(arg_state_def, arg_next_states, state_number_out, arg_skill_to_run, arg_intermediate_states[ii+1])
+        if state_number_out_tmp == -1:
+            return -1, ""
         if arg_next_states[state_number_out_tmp][0] == " " or arg_next_states[state_number_out_tmp][0] == arg_skill_to_run:
             state_number_out = state_number_out_tmp
             previous_skill_out = arg_next_states[state_number_out][0]
@@ -159,6 +163,8 @@ def update_state(arg_intermediate_states, arg_state_number, arg_skill_to_run, ar
             state_number_out, arg_skill_to_run, arg_intermediate_states[-1]))
         state_number_out_tmp = find_state_number(arg_state_def, arg_next_states, state_number_out, arg_skill_to_run,
                                              arg_intermediate_states[-1])
+        if state_number_out_tmp == -1:
+            return -1, ""
         if arg_next_states[state_number_out_tmp][0] == " ":
             state_number_out = state_number_out_tmp
             previous_skill_out = ' '
@@ -222,6 +228,11 @@ def write_graphviz(file_gviz,state_def,next_states,rank):
     fid.close()
 
 def find_state_number(state_def, next_states, previous_state_number, previous_skill, symbols_true):
+    """ Finds the next state number based on the current state, the executed
+    skill, and the symbols that become true.
+
+    Returns -1 if no valid next state
+    """
     valid_next_states_from_previous = next_states[previous_state_number]
     print("Previous skill: {}".format(previous_skill))
     print("Valid next skill from previous: {}".format(valid_next_states_from_previous[0]))
@@ -246,9 +257,12 @@ def find_state_number(state_def, next_states, previous_state_number, previous_sk
             state_number.append(possible_state)
 
     print("We chose state: {}".format(state_number))
-    assert len(state_number) == 1, "There should be only one state true. These states are true: {}".format(state_number)
+    if len(state_number) == 1:
+        return state_number[0]
+    else:
+        return -1
 
-    return state_number[0]
+    # return state_number[0]
 
 
 def find_skill_to_run(next_states, state_number):
